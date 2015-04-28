@@ -39,6 +39,18 @@
 #if YYDEBUG
 extern int yydebug;
 #endif
+/* "%code requires" blocks.  */
+/* Line 2058 of yacc.c  */
+#line 1 "src/65c816.y"
+
+  #include <string>
+  #include <iostream>
+  #include <map>
+  #include <vector>
+
+
+/* Line 2058 of yacc.c  */
+#line 54 "src/parser.hpp"
 
 /* Tokens.  */
 #ifndef YYTOKENTYPE
@@ -160,15 +172,16 @@ extern int yydebug;
 typedef union YYSTYPE
 {
 /* Line 2058 of yacc.c  */
-#line 57 "src/65c816.y"
+#line 32 "src/65c816.y"
 
     std::string *string;
+    std::vector<uint8_t> *vector;
     int token;
     int number;
 
 
 /* Line 2058 of yacc.c  */
-#line 172 "src/parser.hpp"
+#line 185 "src/parser.hpp"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */

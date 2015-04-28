@@ -1,49 +1,24 @@
-%{
+%code requires {
   #include <string>
-  #include <cstdio>
   #include <iostream>
   #include <map>
+  #include <vector>
+}
 
+%{
+  #include <cstdio>
+  #include <vector>
   #include "util.hpp"
+  #include "assembler.hpp"
 
   #define YYDEBUG 1
   extern int yylex();
   extern char * yytext;
   extern int yylineno;
 
-  std::string *output = new std::string("");
+  std::vector<uint8_t> *output = new std::vector<uint8_t>();
   std::string sp = " ";
   std::string nl = "\n";
-
-  enum AddressMode {
-    Implied = 1,
-    Immediate_Mem,
-    Immediate_Index,
-    Immediate_8bit,
-    Relative,
-    Relative_Long,
-    Direct,
-    Direct_X,
-    Direct_Y,
-    Indirect,
-    Indirect_Index,
-    Indirect_Index_Long,
-    Absolute,
-    Absolute_X,
-    Absolute_Y,
-    Absolute_Long,
-    Absolute_Index_Long,
-    Stack,
-    Stack_Index,
-    Absolute_Indirect,
-    Absolute_Indirect_Long,
-    Absolute_Index_Indirect,
-    Implied_Acc,
-    Block
-  };
-
-  std::map<std::string, std::map<AddressMode, uint8_t> > byte_table;
-
 
   void yyerror(const char *s) {
     printf("ERROR: %s\n", s); 
@@ -56,50 +31,99 @@
 
 %union {
     std::string *string;
+    std::vector<uint8_t> *vector;
     int token;
     int number;
 }
 
-%type <string> input line expr param number instr
+%type <vector> input line expr param
+%type <string> instr
+%type <number> number immnum
 //%type <number> number
 
 %start program
 
 %%
-program: input { output = new std::string(*$1); }
+program: input { output = new std::vector<uint8_t>(*$1); }
       ;
 
-input:   /* empty */ { $$ = new std::string(""); }
-      |  input line  { $$ = new std::string(*$1 + nl + *$2); }
+input:   /* empty */ { $$ = new std::vector<uint8_t>(0); }
+      |  input line  { $$ = new std::vector<uint8_t>(*$1); $$->insert($$->end(), *$2->begin(), *$2->end()); }
       ;
 
-line:   expr                          { $$ = new std::string(*$1); }
-      | expr T_LINE                   { $$ = new std::string(*$1); }
-      | expr T_COMMENT T_LINE         { $$ = new std::string(*$1); }
-      | expr T_SEPARATOR expr T_LINE  { $$ = new std::string(*$1 + nl + *$3); }
+line:   expr                          { $$ = $1; }
+      | expr T_LINE                   { $$ = $1; }
+      | expr T_COMMENT T_LINE         { $$ = $1; }
+      | expr T_SEPARATOR expr T_LINE  { $$ = $1; $$->insert($$->end(), *$3->begin(), *$3->end()); }
       | T_COMMENT                     { }
       ;
 
-expr:   instr                                             { puts("Implied");          $$ = new std::string(*$1); }
-      | instr param                                       { puts("Single");           $$ = new std::string(*$1 + sp + *$2); }
-      | instr param T_COMMA param                         { puts("Double");           $$ = new std::string(*$1 + sp + *$2 + sp + *$4); }
-      | instr T_LPAREN param T_COMMA T_REG T_LPAREN       { puts("Indirect");         $$ = new std::string(*$1 + sp + *$3 + sp + *$5); }
-      | instr T_LBRACKET number T_RBRACKET                { puts("Indirect");         $$ = new std::string(*$1 + sp + *$3); }
-      | instr T_LBRACKET number T_RBRACKET T_COMMA T_REG  { puts("Indirect indexed"); $$ = new std::string(*$1 + sp + *$3 + *$6); }
-      | T_LABEL                                           { puts("Label");            $$ = new std::string(yytext); }
+expr:   instr        {
+          $$ = new std::vector<uint8_t>();
+          $$->push_back(yasa::get_byte(*$1, yasa::Implied));
+          std::cout << "$$[0]=" << (*$$)[0] << " : " << yasa::get_byte(*$1, yasa::Implied) << std::endl;
+        }
+      | instr immnum { 
+          if ($2 > 0xFF)
+          {
+            std::cout << "Error: Immediate parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+            exit(0);
+          }
+
+          $$ = new std::vector<uint8_t>();
+          $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
+          $$->push_back($2);
+
+          std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
+        }
+      | instr number { 
+          if ($2 > 0xFFFF)
+          {
+            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+            exit(0);
+          }
+
+          $$ = new std::vector<uint8_t>();
+          $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
+          $$->push_back($2);
+
+          std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
+        }
+      | instr number T_COMMA T_REG {
+          if ($2 > 0xFFFFFF) 
+          {
+            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+            exit(0);
+          }
+
+          $$ = new std::vector<uint8_t>();
+          yasa::AddressMode mode = yasa::Invalid;
+
+          if (*$4 == "X")
+          {
+            $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
+          }
+          else if (*$4 == "Y")
+          {
+            $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
+          }
+        }
       ;
 
 param:  number
-      | T_REG         { $$ = new std::string(yytext); }
+      | immnum
+      | T_REG         { $$ = new std::string(toupper(yytext[0])); }
       | T_IDENT       { $$ = new std::string(yytext); }
       ;
 
-number: T_HEX         { $$ = new std::string(util::to_string(strtol(yytext + 1, NULL, 16)));  }
-      | T_ORD         { $$ = new std::string(util::to_string(strtol(yytext + 0, NULL, 10)));  }
-      | T_BIN         { $$ = new std::string(util::to_string(strtol(yytext + 1, NULL, 2)));   }
-      | T_HEXLIT      { $$ = new std::string(util::to_string(strtol(yytext + 2, NULL, 16)));  }
-      | T_ORDLIT      { $$ = new std::string(util::to_string(strtol(yytext + 1, NULL, 10)));  }
-      | T_BINLIT      { $$ = new std::string(util::to_string(strtol(yytext + 2, NULL, 2)));   }
+number: T_HEX         { $$ = strtol(yytext + 1, NULL, 16);  }
+      | T_ORD         { $$ = strtol(yytext + 0, NULL, 10);  }
+      | T_BIN         { $$ = strtol(yytext + 1, NULL, 2);   }
+      ;
+
+immnum: T_HEXLIT      { $$ = strtol(yytext + 2, NULL, 16);  }
+      | T_ORDLIT      { $$ = strtol(yytext + 1, NULL, 10);  }
+      | T_BINLIT      { $$ = strtol(yytext + 2, NULL, 2);   }
       ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }
