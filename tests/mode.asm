@@ -2,5 +2,3 @@ AND #$10
 AND $40
 AND $4042
 AND $404244
-
-;test

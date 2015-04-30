@@ -51,7 +51,7 @@ input:   /* empty */ { $$ = new std::vector<uint8_t>(); }
       |  input line  { $$ = new std::vector<uint8_t>(*$1); $$->insert($$->end(), $2->begin(), $2->end()); }
       ;
 
-line:   expr T_LINE                   { $$ = $1; }
+line:   expr                          { $$ = $1; }
       | expr T_SEPARATOR expr T_LINE  { $$ = $1; $$->insert($$->end(), *$3->begin(), *$3->end()); }
       | T_LINE                        { $$ = new std::vector<uint8_t>(); }
       ;
