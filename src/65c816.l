@@ -120,3 +120,8 @@ $[0-9a-fA-F]+               SAVE_TOKEN; puts("T_HEX"); return TOKEN(T_HEX);
 ;.*                         ;
 .                           printf("Unknown token! %s\n", yytext); yyterminate();
 %%
+
+void scan_string(const std::string& str)
+{
+  yy_switch_to_buffer(yy_scan_string(str.c_str()));
+}
