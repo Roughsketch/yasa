@@ -47,4 +47,5 @@ Temporary Items
 bin/yasa.exe
 src/parser.output
 src/parser.cpp
+src/parser.hpp
 src/tokens.cpp
