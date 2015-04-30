@@ -5,6 +5,7 @@
 namespace yasa
 {
   enum AddressMode {
+    Invalid,
     Implied = 1,
     Immediate_Mem,
     Immediate_Index,

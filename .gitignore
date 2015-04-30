@@ -44,3 +44,5 @@ Temporary Items
 
 # Object files
 .o
+bin/yasa.exe
+src/parser.output

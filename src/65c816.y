@@ -36,7 +36,7 @@
     int number;
 }
 
-%type <vector> input line expr param
+%type <vector> input line expr implied immediate direct indexed indirect
 %type <string> instr
 %type <number> number immnum
 //%type <number> number
@@ -47,74 +47,113 @@
 program: input { output = new std::vector<uint8_t>(*$1); }
       ;
 
-input:   /* empty */ { $$ = new std::vector<uint8_t>(0); }
-      |  input line  { $$ = new std::vector<uint8_t>(*$1); $$->insert($$->end(), *$2->begin(), *$2->end()); }
+input:   /* empty */ { $$ = new std::vector<uint8_t>(); }
+      |  input line  { $$ = new std::vector<uint8_t>(*$1); $$->insert($$->end(), $2->begin(), $2->end()); }
       ;
 
-line:   expr                          { $$ = $1; }
-      | expr T_LINE                   { $$ = $1; }
-      | expr T_COMMENT T_LINE         { $$ = $1; }
+line:   expr T_LINE                   { $$ = $1; }
       | expr T_SEPARATOR expr T_LINE  { $$ = $1; $$->insert($$->end(), *$3->begin(), *$3->end()); }
-      | T_COMMENT                     { }
+      | T_LINE                        { $$ = new std::vector<uint8_t>(); }
       ;
 
-expr:   instr        {
-          $$ = new std::vector<uint8_t>();
-          $$->push_back(yasa::get_byte(*$1, yasa::Implied));
-          std::cout << "$$[0]=" << (*$$)[0] << " : " << yasa::get_byte(*$1, yasa::Implied) << std::endl;
-        }
-      | instr immnum { 
-          if ($2 > 0xFF)
-          {
-            std::cout << "Error: Immediate parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
-            exit(0);
-          }
+expr:   implied
+      | immediate
+      | direct
+      | indirect
+      | indexed
+      ;
 
-          $$ = new std::vector<uint8_t>();
+implied: 
+      instr {
+        $$ = new std::vector<uint8_t>();
+        $$->push_back(yasa::get_byte(*$1, yasa::Implied));
+      };
+
+immediate:
+      instr immnum { 
+        if ($2 > 0xFF)
+        {
+          std::cout << "Error: Immediate parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+        $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
+        $$->push_back($2);
+
+        std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
+      };
+
+direct:
+      instr number { 
+        if ($2 > 0xFFFFFF)
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+
+        int bytes = ($2 >> 16) == 0 ? ($2 >> 8) == 0 ? 1 : 2 : 3;
+
+        switch (bytes)
+        {
+          case 1:
+            $$->push_back(yasa::get_byte(*$1, yasa::Direct));
+            $$->push_back($2);
+            break;
+          case 2:
+            $$->push_back(yasa::get_byte(*$1, yasa::Absolute));
+            $$->push_back($2 & 0xFF);
+            $$->push_back($2 >> 8);
+            break;
+          case 3:
+            $$->push_back(yasa::get_byte(*$1, yasa::Absolute_Long));
+            $$->push_back($2 & 0xFF);
+            $$->push_back(($2 >> 8) & 0xFF);
+            $$->push_back($2 >> 16);
+            break;
+          default:
+            std::cout << "Error: Invalid number of bytes (" << bytes << " for max of 3)" << std::endl;
+            exit(0);
+        }
+
+        std::cout << "Total bytes: " << $$->size() << std::endl;
+      };
+
+indirect:
+      instr T_LPAREN number T_RPAREN { 
+        if ($3 > 0xFFFF)
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+        $$->push_back(yasa::get_byte(*$1, yasa::Indirect));
+        $$->push_back($3);
+      };
+
+indexed:
+      instr number T_COMMA T_REG {
+        if ($2 > 0xFFFFFF) 
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+        yasa::AddressMode mode = yasa::Invalid;
+
+        if (*$4 == "X")
+        {
           $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
-          $$->push_back($2);
-
-          std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
         }
-      | instr number { 
-          if ($2 > 0xFFFF)
-          {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
-            exit(0);
-          }
-
-          $$ = new std::vector<uint8_t>();
+        else if (*$4 == "Y")
+        {
           $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
-          $$->push_back($2);
-
-          std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
         }
-      | instr number T_COMMA T_REG {
-          if ($2 > 0xFFFFFF) 
-          {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
-            exit(0);
-          }
-
-          $$ = new std::vector<uint8_t>();
-          yasa::AddressMode mode = yasa::Invalid;
-
-          if (*$4 == "X")
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
-          }
-          else if (*$4 == "Y")
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
-          }
-        }
-      ;
-
-param:  number
-      | immnum
-      | T_REG         { $$ = new std::string(toupper(yytext[0])); }
-      | T_IDENT       { $$ = new std::string(yytext); }
-      ;
+      };
 
 number: T_HEX         { $$ = strtol(yytext + 1, NULL, 16);  }
       | T_ORD         { $$ = strtol(yytext + 0, NULL, 10);  }

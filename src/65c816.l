@@ -4,17 +4,15 @@
 
   #define SAVE_TOKEN  yylval.string = new std::string(yytext, yyleng)
   #define TOKEN(t)    (yylval.token = t)
-
-  extern "C" int yywrap() { };
 %}
 
 %option yylineno
+%option noyywrap
 
 %%
 
 [ \t]*                      ;
 \n                          return TOKEN(T_LINE);
-<<EOF>>                     return TOKEN(T_LINE);
 (?i:ADC)                    return TOKEN(T_ADC);
 (?i:AND)                    return TOKEN(T_AND);
 (?i:ASL)                    return TOKEN(T_ASL);
@@ -119,6 +117,6 @@ $[0-9a-fA-F]+               SAVE_TOKEN; puts("T_HEX"); return TOKEN(T_HEX);
 \)                          return TOKEN(T_RPAREN);
 \[                          return TOKEN(T_LBRACKET);
 \]                          return TOKEN(T_RBRACKET);
-;.*                         return TOKEN(T_COMMENT);
+;.*                         ;
 .                           printf("Unknown token! %s\n", yytext); yyterminate();
 %%
