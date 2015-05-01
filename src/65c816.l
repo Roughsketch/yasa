@@ -103,7 +103,9 @@
 (?i:XBA)                    return TOKEN(T_XBA);
 (?i:XCE)                    return TOKEN(T_XCE);
 [a-zA-Z_][a-zA-Z0-9_]*:     SAVE_TOKEN; puts("T_LABEL"); return TOKEN(T_LABEL);
-[asxyASXY]                  SAVE_TOKEN; puts("T_REG");  return TOKEN(T_REG);
+[xyXY]                      SAVE_TOKEN; puts("T_INDEX");  return TOKEN(T_INDEX);
+(?i:a)                      SAVE_TOKEN; puts("T_ACC"); return TOKEN(T_ACC);
+(?i:s)                      SAVE_TOKEN; puts("T_STACK"); return TOKEN(T_STACK);
 [a-zA-Z_][a-zA-Z0-9_]*      SAVE_TOKEN; puts("T_IDENT"); return TOKEN(T_IDENT);
 $[0-9a-fA-F]+               SAVE_TOKEN; puts("T_HEX"); return TOKEN(T_HEX);
 #$[0-9a-fA-F]+              SAVE_TOKEN; puts("T_HEXLIT"); return TOKEN(T_HEXLIT);

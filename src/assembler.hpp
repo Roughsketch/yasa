@@ -60,7 +60,7 @@ namespace yasa
       {"CLI", {{Implied, 0x58}}},
       {"CLV", {{Implied, 0xB8}}},
       {"CMP", {{Indirect_X, 0xC1}, {Stack, 0xC3}, {Direct, 0xC5}, {Indirect_Long, 0xC7}, {Immediate, 0xC9}, {Absolute, 0xCD}, {Absolute_Long, 0xCF}, {Indirect_Y, 0xD1}, {Indirect, 0xD2}, {Stack_Y, 0xD3}, {Direct_X, 0xD5}, {Indirect_Long_Y, 0xD7}, {Absolute_Y, 0xD9}, {Absolute_X, 0xDD}, {Absolute_Long_X, 0xDF}}},
-      {"COP", {{Immediate, 0x02}}},
+      {"COP", {{Implied, 0x02}, {Immediate, 0x02}}},
       {"CPX", {{Immediate, 0xE0}, {Direct, 0xE4}, {Absolute, 0xEC}}},
       {"CPY", {{Immediate, 0xC0}, {Direct, 0xC4}, {Absolute, 0xCC}}},
       {"DEC", {{Accumulator, 0x3A}, {Direct, 0xC6}, {Absolute, 0xCE}, {Direct_X, 0xD6}, {Absolute_X, 0xDE}}},
@@ -134,6 +134,43 @@ namespace yasa
 
   uint8_t get_byte(std::string instr, AddressMode mode)
   {
+    static std::vector<std::string> modes = {
+          "Invalid",
+          "Implied = 1",
+          "Immediate_Mem",
+          "Immediate_Index",
+          "Immediate_8bit",
+          "Immediate",
+          "Label",
+          "Near_Label",
+          "Relative",
+          "Relative_Long",
+          "Direct",
+          "Direct_X",
+          "Direct_Y",
+          "Indirect",
+          "Indirect_X",
+          "Indirect_Y",
+          "Indirect_Long",
+          "Indirect_Long_Y",
+          "Absolute",
+          "Absolute_X",
+          "Absolute_Y",
+          "Absolute_Long",
+          "Absolute_Long_X",
+          "Stack",
+          "Stack_Y",
+          "Absolute_Indirect",
+          "Absolute_Indirect_Long",
+          "Absolute_Indirect_X",
+          "Accumulator",
+          "Block"
+    };
+
+    if (detail::ByteTable[instr].count(mode) == 0)
+    {
+      std::cout << "Error: " << modes[mode] << " does not exist for " << instr << std::endl;
+    }
     return detail::ByteTable[instr][mode];
   }
 }

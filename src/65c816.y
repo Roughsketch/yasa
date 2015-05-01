@@ -8,6 +8,7 @@
 %{
   #include <cstdio>
   #include <vector>
+  #include <cstring>
   #include "util.hpp"
   #include "assembler.hpp"
 
@@ -21,13 +22,15 @@
   std::string nl = "\n";
 
   void yyerror(const char *s) {
-    printf("ERROR: %s\n", s); 
+    printf("ERROR: %s %d\n", s, yylineno); 
   }
 %}
 
-%token <string>  T_IDENT T_LABEL T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT T_COMMA T_REG T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMENT
+%token <string>  T_IDENT T_LABEL T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMENT
 
 %token <string>  T_ADC T_AND T_ASL T_BCC T_BCS T_BEQ T_BIT T_BMI T_BNE T_BPL T_BRA T_BRK T_BRL T_BVC T_BVS T_CLC T_CLD T_CLI T_CLV T_CMP T_COP T_CPX T_CPY T_DEC T_DEX T_DEY T_EOR T_INC T_INX T_INY T_JMP T_JSR T_LDA T_LDX T_LDY T_LSR T_MVN T_NOP T_ORA T_PEA T_PEI T_PER T_PHA T_PHB T_PHD T_PHK T_PHP T_PHX T_PHY T_PLA T_PLB T_PLD T_PLP T_PLX T_PLY T_REP T_ROL T_ROR T_RTI T_RTL T_RTS T_SBC T_SEC T_SED T_SEI T_SEP T_STA T_STP T_STX T_STY T_STZ T_TAX T_TAY T_TCD T_TCS T_TDC T_TRB T_TSB T_TSC T_TSX T_TXA T_TXS T_TXY T_TYA T_TYX T_WAI T_WDM T_XBA T_XCE
+
+%token <string> T_ACC T_STACK T_INDEX
 
 %union {
     std::string *string;
@@ -36,8 +39,8 @@
     int number;
 }
 
-%type <vector> input line expr implied immediate direct indexed indirect
-%type <string> instr
+%type <vector> input line expr implied immediate direct indexed indirect indirect_indexed stack_relative accumulator indirect_long
+%type <string> instr index stack accum
 %type <number> number immnum
 //%type <number> number
 
@@ -61,16 +64,34 @@ expr:   implied
       | direct
       | indirect
       | indexed
+      | indirect_indexed
+      | stack_relative
+      | accumulator
+      | indirect_long
       ;
 
 implied: 
       instr {
+        puts("Implied");
         $$ = new std::vector<uint8_t>();
         $$->push_back(yasa::get_byte(*$1, yasa::Implied));
+
+        //  If op was an implied BRK or COP, then push back another 0
+        if ((*$$)[0] == 0x00 || (*$$)[0] == 0x02)
+        {
+          $$->push_back(0);
+        }
+
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
       };
 
 immediate:
       instr immnum { 
+        puts("Immediate");
         if ($2 > 0xFF)
         {
           std::cout << "Error: Immediate parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
@@ -81,11 +102,16 @@ immediate:
         $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
         $$->push_back($2);
 
-        std::cout << "Bytes: " << static_cast<int>((*$$)[0]) << " " << static_cast<int>((*$$)[1]) << std::endl;
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
       };
 
 direct:
       instr number { 
+        puts("Direct");
         if ($2 > 0xFFFFFF)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
@@ -118,11 +144,16 @@ direct:
             exit(0);
         }
 
-        std::cout << "Total bytes: " << $$->size() << std::endl;
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
       };
 
 indirect:
       instr T_LPAREN number T_RPAREN { 
+        puts("Indirect");
         if ($3 > 0xFFFF)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3) << ") line " << yylineno << std::endl;
@@ -132,10 +163,17 @@ indirect:
         $$ = new std::vector<uint8_t>();
         $$->push_back(yasa::get_byte(*$1, yasa::Indirect));
         $$->push_back($3);
+
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
       };
 
 indexed:
-      instr number T_COMMA T_REG {
+      instr number T_COMMA index {
+        puts("Indexed");
         if ($2 > 0xFFFFFF) 
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
@@ -153,16 +191,115 @@ indexed:
         {
           $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
         }
+        
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
       };
 
-number: T_HEX         { $$ = strtol(yytext + 1, NULL, 16);  }
-      | T_ORD         { $$ = strtol(yytext + 0, NULL, 10);  }
-      | T_BIN         { $$ = strtol(yytext + 1, NULL, 2);   }
+indirect_indexed:
+      instr T_LPAREN number T_COMMA index T_RPAREN {
+        puts("Indirect Indexed");
+        if ($3 > 0xFF)
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+        yasa::AddressMode mode = yasa::Invalid;
+
+
+        if (*$5 == "X")
+        {
+          std::cout << "Indirect Indexed X: " << static_cast<int>(yasa::get_byte(*$1, yasa::Indirect_X)) << std::endl;
+          $$->push_back(yasa::get_byte(*$1, yasa::Indirect_X));
+        }
+        else if (*$5 == "Y")
+        {
+          std::cout << "Indirect Indexed Y: " << static_cast<int>(yasa::get_byte(*$1, yasa::Indirect_Y)) << std::endl;
+          $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Y));
+        }
+
+        $$->push_back($3);
+        
+        for (int i = 0; i < $$->size(); i++)
+        {
+          std::cout << static_cast<int>((*$$)[i]) << " ";
+        }
+        std::cout << std::endl;
+      };
+
+stack_relative:
+      instr number T_COMMA stack {
+        if ($2 > 0xFF)
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+
+        $$->push_back(yasa::get_byte(*$1, yasa::Stack));
+        $$->push_back($2);
+      }
+      ;
+
+accumulator:
+      instr accum {
+        $$ = new std::vector<uint8_t>();
+
+        $$->push_back(yasa::get_byte(*$1, yasa::Accumulator));
+      }
+      ;
+
+indirect_long:
+      instr T_LBRACKET number T_RBRACKET {
+        if ($3 > 0xFF)
+        {
+          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3) << ") line " << yylineno << std::endl;
+          exit(0);
+        }
+
+        $$ = new std::vector<uint8_t>();
+
+        $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Long));
+        $$->push_back($3);
+      }
+      ;
+
+number: T_HEX         { $$ = strtol(yytext + 1, NULL, 16); }
+      | T_ORD         { $$ = strtol(yytext + 0, NULL, 10); }
+      | T_BIN         { $$ = strtol(yytext + 1, NULL, 2);  }
       ;
 
 immnum: T_HEXLIT      { $$ = strtol(yytext + 2, NULL, 16);  }
       | T_ORDLIT      { $$ = strtol(yytext + 1, NULL, 10);  }
       | T_BINLIT      { $$ = strtol(yytext + 2, NULL, 2);   }
+      ;
+
+index:  T_INDEX       {
+          if (yytext[0] == 'X' || yytext[0] == 'x')
+          {
+            $$ = new std::string("X");
+          }
+          else if (yytext[0] == 'Y' || yytext[0] == 'y')
+          {
+            $$ = new std::string("Y");
+          }
+          else
+          {
+            std::cout << "Error: Invalid index register (" << yytext << ")" << std::endl;
+          }
+        }
+      ;
+
+accum:  T_ACC         { $$ = new std::string("A"); }
+      ;
+
+stack:  T_STACK       { $$ = new std::string("S"); }
       ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }

@@ -15,11 +15,11 @@ int main(int argc, char *argv[])
 
   puts("Parsing:");
 
-  scan_string("LDA $0230");
-  yyparse();
+  // scan_string("LDA $0230");
+  // yyparse();
 
-  // std::cout << "yyparse: " << yyparse() << std::endl;
-  // std::cout << "output : " << std::endl;
+  std::cout << "yyparse: " << yyparse() << std::endl;
+  std::cout << "output : " << std::endl;
 
   for (auto byte : *output)
   {
