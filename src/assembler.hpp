@@ -4,8 +4,10 @@
 #include <map>
 #include <string>
 #include <iostream>
-#include <cstdlib>
 #include <vector>
+
+#include <cstdlib>
+#include <cstring>
 
 namespace yasa
 {
@@ -44,14 +46,15 @@ namespace yasa
 
   namespace detail
   {
-    extern std::map<std::string, std::map<AddressMode, uint8_t> > ByteTable;
+    extern std::map<std::string, std::map<AddressMode, uint8_t>> ByteTable;
   }
 
   uint8_t get_byte(std::string instr, AddressMode mode);
+  uint8_t get_size(std::string instr, AddressMode mode);
 
   struct Integer 
   {
-    Integer(const char *str, int base)
+    Integer(const char *str, int base = 10)
     {
       m_value = strtol(str, NULL, base);
       m_bytes = strlen(str) / 2 + strlen(str) % 2;
@@ -73,17 +76,48 @@ namespace yasa
 
   struct Instruction
   {
-    Instruction(const char *instr, AddressMode mode)
+    Instruction(std::string &instr, AddressMode mode, int snespos) : m_label("")
     {
-      m_data.push_back(get_byte(instr, mode));
+      m_data.push_back(get_byte(instr, mode)); 
+      m_address = snespos;
+      m_name = std::string(instr);
+      m_mode = mode;
     }
 
-    Instruction& add(Integer *n)
+    inline Instruction& add(Integer *n)
     {
       for (int i = 0; i < n->size(); i++)
       {
         m_data.push_back((n->value() >> (i * 8)) & 0xFF);
       }
+
+      return *this;
+    }
+
+    inline Instruction& add(int n, int size = 1)
+    {
+      for (int i = 0; i < size; i++)
+      {
+        m_data.push_back((n >> (i * 8)) & 0xFF);
+      }
+
+      return *this;
+    }
+
+    inline Instruction& set_label(std::string label)
+    {
+      m_label = label;
+      return *this;
+    }
+
+    inline bool has_label()
+    {
+      return m_label != "";
+    }
+
+    inline std::string label()
+    {
+      return m_label;
     }
 
     std::vector<uint8_t> data()
@@ -91,13 +125,36 @@ namespace yasa
       return m_data;
     }
 
+    int size()
+    {
+      return m_data.size();
+    }
+
+    uint8_t opcode()
+    {
+      return m_data[0];
+    }
+
     int address()
     {
       return m_address;
     }
+
+    std::string name()
+    {
+      return m_name;
+    }
+
+    AddressMode mode()
+    {
+      return m_mode;
+    }
   private:
     std::vector<uint8_t> m_data;
     int m_address;
+    std::string m_label;
+    std::string m_name;
+    AddressMode m_mode;
   };
 }
 

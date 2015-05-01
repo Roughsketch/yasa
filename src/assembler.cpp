@@ -139,4 +139,9 @@ namespace yasa
     }
     return detail::ByteTable[instr][mode];
   }
+
+  uint8_t get_size(std::string instr, AddressMode mode)
+  {
+    return 1;
+  }
 }

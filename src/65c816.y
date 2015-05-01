@@ -13,13 +13,14 @@
   #include <map>
   #include <cstring>
   #include "util.hpp"
+  #include "assembler.hpp"
 
   #define YYDEBUG 1
   extern int yylex();
   extern char * yytext;
   extern int yylineno;
 
-  std::vector<uint8_t> *output = new std::vector<uint8_t>();
+  auto *output = new std::vector<yasa::Instruction>();
   int snespos = 0;
   std::map<std::string, int> labels;
 
@@ -43,9 +44,11 @@
     int token;
     yasa::Integer *number;
     yasa::Instruction *instruction;
+    std::vector<yasa::Instruction> *instrvec;
 }
 
-%type <vector> input line expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
+%type <instrvec>    input line
+%type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
 %type <string> instr index stack accum
 %type <number> number immnum
 //%type <number> number
@@ -53,17 +56,17 @@
 %start program
 
 %%
-program: input { output = new std::vector<uint8_t>(*$1); }
+program: input { output = new std::vector<yasa::Instruction>(*$1); }
       ;
 
-input:   /* empty */ { $$ = new std::vector<uint8_t>(); }
-      |  input line  { $$ = new std::vector<uint8_t>(*$1); $$->insert($$->end(), $2->begin(), $2->end()); }
+input:   /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
+      |  input line  { $$ = new std::vector<yasa::Instruction>(*$1); $$->insert($$->end(), $2->begin(), $2->end()); }
       ;
 
-line:   expr                          { $$ = $1; snespos += $1->size(); }
-      | expr T_SEPARATOR expr T_LINE  { $$ = $1; $$->insert($$->end(), *$3->begin(), *$3->end()); snespos += $$->size(); }
-      | T_LINE                        { $$ = new std::vector<uint8_t>(); }
-      | T_LABEL                       { $$ = new std::vector<uint8_t>(); labels[std::string(yytext)] = snespos; }
+line:   expr                          { $$ = new std::vector<yasa::Instruction>(); $$->push_back(*$1); snespos += $1->size(); }
+      | expr T_SEPARATOR expr T_LINE  { $$ = new std::vector<yasa::Instruction>(); $$->push_back(*$1); $$->push_back(*$3); snespos += $1->size() + $3->size(); }
+      | T_LINE                        { $$ = new std::vector<yasa::Instruction>(); }
+      | T_LABEL                       { $$ = new std::vector<yasa::Instruction>(); labels[std::string(yytext)] = snespos; }
       ;
 
 expr:   implied
@@ -82,26 +85,24 @@ expr:   implied
 
 temp_label:
       instr T_IDENT {
-        $$ = new std::vector<uint8_t>();
+        $$ = new yasa::Instruction(*$1, yasa::Invalid, snespos);
+        $$->set_label(std::string(yytext) + ":");
       }
 
 implied: 
       instr {
         puts("Implied");
-        $$ = new std::vector<uint8_t>();
-        $$->push_back(yasa::get_byte(*$1, yasa::Implied));
+        $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
 
         //  If op was an implied BRK or COP, then push back another 0
-        if ((*$$)[0] == 0x00 || (*$$)[0] == 0x02 || (*$$)[0] == 0x42)
+        switch ($$->opcode())
         {
-          $$->push_back(0);
+          case 0x00:  // BRK
+          case 0x02:  // COP
+          case 0x42:  // WDM
+            $$->add(new yasa::Integer("0"));
+            break;
         }
-
-        for (int i = 0; i < $$->size(); i++)
-        {
-          std::cout << static_cast<int>((*$$)[i]) << " ";
-        }
-        std::cout << std::endl;
       };
 
 immediate:
@@ -109,77 +110,33 @@ immediate:
         puts("Immediate");
         std::cout << "Size: " << $2->size() << std::endl;
         int value = $2->value();
-        if (value > 0xFFFF)
+
+        if ($2->size() > 2)
         {
           std::cout << "Error: Immediate parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-        $$->push_back(yasa::get_byte(*$1, yasa::Immediate));
-
-        switch ($2->size())
-        {
-          case 1:
-            $$->push_back(value);
-            break;
-          case 2:
-            $$->push_back(value & 0xFF);
-            $$->push_back(value >> 8);
-            break;
-          default:
-            std::cout << "Error: Invalid number of bytes (" << $2->size() << " for max of 3)" << std::endl;
-            exit(0);
-        }
-
-        for (int i = 0; i < $$->size(); i++)
-        {
-          std::cout << static_cast<int>((*$$)[i]) << " ";
-        }
-        std::cout << std::endl;
+        $$ = new yasa::Instruction(*$1, yasa::Immediate, snespos);
+        $$->add($2);
       };
 
 direct:
       instr number { 
         puts("Direct");
         int value = $2->value();
+        int size = $2->size();
 
-        if (value > 0xFFFFFF)
+        if ($2->size() > 3)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
+        auto mode = size == 1 ? yasa::Direct : size == 2 ? yasa::Absolute : yasa::Absolute_Long;
 
-
-        switch ($2->size())
-        {
-          case 1:
-            $$->push_back(yasa::get_byte(*$1, yasa::Direct));
-            $$->push_back(value);
-            break;
-          case 2:
-            $$->push_back(yasa::get_byte(*$1, yasa::Absolute));
-            $$->push_back(value & 0xFF);
-            $$->push_back(value >> 8);
-            break;
-          case 3:
-            $$->push_back(yasa::get_byte(*$1, yasa::Absolute_Long));
-            $$->push_back(value & 0xFF);
-            $$->push_back((value >> 8) & 0xFF);
-            $$->push_back(value >> 16);
-            break;
-          default:
-            std::cout << "Error: Invalid number of bytes (" << $2->size() << " for max of 3)" << std::endl;
-            exit(0);
-        }
-
-        for (int i = 0; i < $$->size(); i++)
-        {
-          std::cout << static_cast<int>((*$$)[i]) << " ";
-        }
-        std::cout << std::endl;
+        $$ = new yasa::Instruction(*$1, mode, snespos);
+        $$->add($2);
       };
 
 indirect:
@@ -191,15 +148,8 @@ indirect:
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-        $$->push_back(yasa::get_byte(*$1, yasa::Indirect));
-        $$->push_back($3->value());
-
-        for (int i = 0; i < $$->size(); i++)
-        {
-          std::cout << static_cast<int>((*$$)[i]) << " ";
-        }
-        std::cout << std::endl;
+        $$ = new yasa::Instruction(*$1, yasa::Indirect, snespos);
+        $$->add($3);
       };
 
 indexed:
@@ -214,54 +164,24 @@ indexed:
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-        yasa::AddressMode mode = yasa::Invalid;
-
         if (*$4 == "X")
         {
-          if (size == 1)
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Direct_X)); 
-          }
-          else if (size == 2)
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Absolute_X)); 
-          }
-          else if (size == 3)
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Absolute_Long_X));
-          }
-          else
-          {
-            std::cout << "Error: byte size too big for X indexed call (line " << yylineno << ")" << std::endl;
-          }
+          
+          auto mode = size == 1 ? yasa::Direct_X : size == 2 ? yasa::Absolute_X : yasa::Absolute_Long_X;
+          $$ = new yasa::Instruction(*$1, mode, snespos);
+          $$->add($2);
         }
         else if (*$4 == "Y")
         {
-          if (size == 1)
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Direct_Y)); 
-          }
-          else if (size == 2)
-          {
-            $$->push_back(yasa::get_byte(*$1, yasa::Absolute_Y)); 
-          }
-          else
+          if (size > 2)
           {
             std::cout << "Error: byte size too big for Y indexed call (line " << yylineno << ")" << std::endl;
           }
-        }
-        
-        for (int i = 0; i < size; i++)
-        {
-          $$->push_back((value >> (i * 8)) & 0xFF);
-        }
 
-        for (int i = 0; i < $$->size(); i++)
-        {
-          std::cout << static_cast<int>((*$$)[i]) << " ";
+          auto mode = size == 1 ? yasa::Direct_Y : yasa::Absolute_Y;
+          $$ = new yasa::Instruction(*$1, mode, snespos);
+          $$->add($2);
         }
-        std::cout << std::endl;
       };
 
 indirect_indexed:
@@ -273,28 +193,8 @@ indirect_indexed:
             exit(0);
           }
 
-          $$ = new std::vector<uint8_t>();
-          yasa::AddressMode mode = yasa::Invalid;
-
-
-          if (*$5 == "X")
-          {
-            std::cout << "Indirect Indexed X: " << static_cast<int>(yasa::get_byte(*$1, yasa::Indirect_X)) << std::endl;
-            $$->push_back(yasa::get_byte(*$1, yasa::Indirect_X));
-          }
-          else if (*$5 == "Y")
-          {
-            std::cout << "Indirect Indexed Y: " << static_cast<int>(yasa::get_byte(*$1, yasa::Indirect_Y)) << std::endl;
-            $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Y));
-          }
-
-          $$->push_back($3->value());
-          
-          for (int i = 0; i < $$->size(); i++)
-          {
-            std::cout << static_cast<int>((*$$)[i]) << " ";
-          }
-          std::cout << std::endl;
+          $$ = new yasa::Instruction(*$1, *$5 == "X" ? yasa::Indirect_X : yasa::Indirect_Y, snespos);
+          $$->add($3);
         }
       | instr T_LPAREN number T_RPAREN T_COMMA index {
           puts("Indirect Indexed");
@@ -304,27 +204,17 @@ indirect_indexed:
             exit(0);
           }
 
-          $$ = new std::vector<uint8_t>();
-          yasa::AddressMode mode = yasa::Invalid;
 
           if (*$6 == "Y")
           {
-            std::cout << "Indirect Indexed Y: " << static_cast<int>(yasa::get_byte(*$1, yasa::Indirect_Y)) << std::endl;
-            $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Y));
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, snespos);
+            $$->add($3);
           }
           else
           {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
             exit(0);
           }
-
-          $$->push_back($3->value());
-          
-          for (int i = 0; i < $$->size(); i++)
-          {
-            std::cout << static_cast<int>((*$$)[i]) << " ";
-          }
-          std::cout << std::endl;
         }
       ;
 
@@ -337,10 +227,8 @@ stack_relative:
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-
-        $$->push_back(yasa::get_byte(*$1, yasa::Stack));
-        $$->push_back($2->value());
+        $$ = new yasa::Instruction(*$1, yasa::Stack, snespos);
+        $$->add($2);
       }
       ;
 
@@ -353,12 +241,10 @@ stack_relative_indirect:
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-
         if (*$8 == "Y")
         {
-          $$->push_back(yasa::get_byte(*$1, yasa::Stack_Y));
-          $$->push_back($3->value());
+          $$ = new yasa::Instruction(*$1, yasa::Stack_Y, snespos);
+          $$->add($3);
         }
         else
         {
@@ -371,9 +257,8 @@ stack_relative_indirect:
 accumulator:
       instr accum {
         puts("Accumulator");
-        $$ = new std::vector<uint8_t>();
 
-        $$->push_back(yasa::get_byte(*$1, yasa::Accumulator));
+        $$ = new yasa::Instruction(*$1, yasa::Accumulator, snespos);
       }
       ;
 
@@ -386,10 +271,8 @@ indirect_long:
             exit(0);
           }
 
-          $$ = new std::vector<uint8_t>();
-
-          $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Long));
-          $$->push_back($3->value());
+          $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, snespos);
+          $$->add($3);
         }
       | instr T_LBRACKET number T_RBRACKET T_COMMA index {
           puts("Indirect Long");
@@ -399,12 +282,10 @@ indirect_long:
             exit(0);
           }
 
-          $$ = new std::vector<uint8_t>();
-
           if (*$6 == "Y")
           {
-            $$->push_back(yasa::get_byte(*$1, yasa::Indirect_Long_Y));
-            $$->push_back($3->value());
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, snespos);
+            $$->add($3);
           }
           else
           {
@@ -424,11 +305,9 @@ block:
           exit(0);
         }
 
-        $$ = new std::vector<uint8_t>();
-
-        $$->push_back(yasa::get_byte(*$1, yasa::Block));
-        $$->push_back($2->value());
-        $$->push_back($4->value());
+        $$ = new yasa::Instruction(*$1, yasa::Block, snespos);
+        $$->add($2);
+        $$->add($4);
       };
 
 number: T_HEX         { $$ = new yasa::Integer(yytext + 1, 16); }
