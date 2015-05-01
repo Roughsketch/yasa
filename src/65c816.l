@@ -43,13 +43,16 @@
 (?i:INC)                    return TOKEN(T_INC);
 (?i:INX)                    return TOKEN(T_INX);
 (?i:INY)                    return TOKEN(T_INY);
+(?i:JML)                    return TOKEN(T_JML);  //  Special case of JMP
 (?i:JMP)                    return TOKEN(T_JMP);
+(?i:JSL)                    return TOKEN(T_JSR);  //  Special case of JSR
 (?i:JSR)                    return TOKEN(T_JSR);
 (?i:LDA)                    return TOKEN(T_LDA);
 (?i:LDX)                    return TOKEN(T_LDX);
 (?i:LDY)                    return TOKEN(T_LDY);
 (?i:LSR)                    return TOKEN(T_LSR);
 (?i:MVN)                    return TOKEN(T_MVN);
+(?i:MVP)                    return TOKEN(T_MVP);  //  Special case of MVN
 (?i:NOP)                    return TOKEN(T_NOP);
 (?i:ORA)                    return TOKEN(T_ORA);
 (?i:PEA)                    return TOKEN(T_PEA);
