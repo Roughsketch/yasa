@@ -452,7 +452,7 @@ index:  T_INDEX       {
           }
           else
           {
-            std::cout << "Error: Invalid index register (" << yytext << ")" << std::endl;
+            std::cout << "Error: Invalid index register " << yytext << " (line " << yylineno << ")" << std::endl;
           }
         }
       ;

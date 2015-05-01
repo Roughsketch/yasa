@@ -78,28 +78,11 @@ namespace yasa
       m_data.push_back(get_byte(instr, mode));
     }
 
-    Instruction(const char *instr, Integer *param, AddressMode mode)
+    Instruction& add(Integer *n)
     {
-      m_data.push_back(get_byte(instr, mode));
-
-      for (int i = 0; i < param->size(); i++)
+      for (int i = 0; i < n->size(); i++)
       {
-        m_data.push_back((param->value() >> (i * 8)) & 0xFF);
-      }
-    }
-
-    Instruction(const char *instr, Integer *param1, Integer *param2, AddressMode mode)
-    {
-      m_data.push_back(get_byte(instr, mode));
-
-      for (int i = 0; i < param1->size(); i++)
-      {
-        m_data.push_back((param1->value() >> (i * 8)) & 0xFF);
-      }
-
-      for (int i = 0; i < param2->size(); i++)
-      {
-        m_data.push_back((param2->value() >> (i * 8)) & 0xFF);
+        m_data.push_back((n->value() >> (i * 8)) & 0xFF);
       }
     }
 
