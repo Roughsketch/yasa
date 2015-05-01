@@ -1,18 +1,24 @@
 CC=g++
-CFLAGS=-Wall -c
-SRCS=src/parser.cpp src/tokens.cpp src/main.cpp
+CXXFLAGS=-c -std=c++11 -U__STRICT_ANSI__
+SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa
 
-all: $(SRCS) $(EXE)
+all: flex bison $(SRCS) $(EXE)
 
 $(EXE): $(OBJS)
 	$(CC) $(OBJS) -o $@
 
 .c.o:
-	$(CC) $(CFLAGS) $< -o $@
+	$(CC) $(CXXFLAGS) $< -o $@
+
+flex:
+	win_flex.exe -o src/tokens.cpp src/65c816.l
+
+bison:
+	win_bison.exe -d -o src/parser.cpp src/65c816.y
 
 rebuild: clean all
 
 clean:
-	del *.o
+	rm *.o
