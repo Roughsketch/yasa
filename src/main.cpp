@@ -22,11 +22,11 @@ int main(int argc, char *argv[])
   std::cout << "yyparse: " << yyparse() << std::endl;
   std::cout << "output : " << std::endl;
 
-  for (auto instr : *output)
+  for (auto &instr : *output)
   {
     if (instr.has_label())
     {
-      instr.add(labels[instr.label()] - instr.address(), yasa::get_size(instr.name(), instr.mode()));
+      instr.parse_label(labels[instr.label()]);
     }
   }
 

@@ -85,7 +85,7 @@ expr:   implied
 
 temp_label:
       instr T_IDENT {
-        $$ = new yasa::Instruction(*$1, yasa::Invalid, snespos);
+        $$ = new yasa::Instruction(*$1, yasa::Label, snespos);
         $$->set_label(std::string(yytext) + ":");
       }
 
@@ -265,6 +265,7 @@ accumulator:
 indirect_long:
         instr T_LBRACKET number T_RBRACKET {
           puts("Indirect Long");
+          std::cout << *$1 << std::endl;
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
