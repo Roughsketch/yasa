@@ -108,7 +108,6 @@ implied:
 immediate:
       instr immnum { 
         puts("Immediate");
-        std::cout << "Size: " << $2->size() << std::endl;
         int value = $2->value();
 
         if ($2->size() > 2)
@@ -265,7 +264,7 @@ accumulator:
 indirect_long:
         instr T_LBRACKET number T_RBRACKET {
           puts("Indirect Long");
-          std::cout << *$1 << std::endl;
+
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
@@ -300,6 +299,7 @@ indirect_long:
 block:
       instr number T_COMMA number {
         puts("Block");
+
         if ($2->value() > 0xFF || $4->value() > 0xFF)
         {
           std::cout << "Error: parameter for block bigger than allowed size of 1 byte. (line " << yylineno << ")" << std::endl;
@@ -333,6 +333,7 @@ index:  T_INDEX       {
           else
           {
             std::cout << "Error: Invalid index register " << yytext << " (line " << yylineno << ")" << std::endl;
+            exit(0);
           }
         }
       ;

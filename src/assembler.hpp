@@ -13,7 +13,12 @@ namespace yasa
 {
   namespace detail
   {
-    extern std::map<std::string, std::map<AddressMode, uint8_t>> ByteTable;
+    struct opcode
+    {
+      uint8_t opcode;
+      uint8_t size;
+    };
+    extern std::map<std::string, std::map<AddressMode, opcode>> ByteTable;
   }
 
   uint8_t get_byte(std::string instr, AddressMode &mode, bool &success);

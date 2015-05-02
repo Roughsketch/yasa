@@ -44,5 +44,6 @@ int main(int argc, char *argv[])
   {
     std::cout << "Label: " << label.first << " at address " << std::hex << label.second << std::dec << std::endl;
   }
+
   return 0;
 }

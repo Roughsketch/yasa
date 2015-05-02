@@ -43,6 +43,13 @@ namespace yasa
   Instruction& Instruction::set_label(std::string label)
   {
     m_label = label;
+
+    int size = get_size(m_name, m_mode);
+    while (size--)
+    {
+      m_data.push_back(0);
+    }
+
     return *this;
   }
 
@@ -53,9 +60,12 @@ namespace yasa
 
   void Instruction::parse_label(int label_addr)
   {
-    int relative = label_addr - m_address - 1;
+    int label_size = get_size(m_name, m_mode);
+    int relative = label_addr - m_address - label_size - 1;
 
-    for (int i = 0; i < 1; i++)
+    m_data = std::vector<uint8_t> { m_data[0] };
+
+    for (int i = 0; i < label_size; i++)
     {
       m_data.push_back((relative >> (i * 8)) & 0xFF);
     }
