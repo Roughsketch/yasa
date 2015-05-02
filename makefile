@@ -1,6 +1,6 @@
 CC=g++
 CXXFLAGS=-c -std=c++11 -U__STRICT_ANSI__
-SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp src/instruction.cpp
+SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp src/instruction.cpp src/test.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa
 

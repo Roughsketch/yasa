@@ -124,10 +124,6 @@ namespace yasa
 
   bool has_byte(std::string instr, AddressMode mode)
   {
-    if (instr == "JMP")
-    {
-      std::cout << detail::ByteTable[instr].count(mode) << std::endl;
-    }
     return (detail::ByteTable[instr].count(mode) == 1);
   }
 

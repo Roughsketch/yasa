@@ -13,11 +13,31 @@ namespace yasa
 {
   namespace detail
   {
+    // struct opcode_info
+    // {
+    //   uint8_t opcode;
+    //   uint8_t size;
+    //   uint8_t min_size;
+    // };
+
+    // class Opcode
+    // {
+    // public:
+    //   Opcode(std::string &name);
+
+    //   Opcode &add(AddressMode mode, opcode_info info);
+    // private:
+    //   std::string m_name;
+    //   std::map<AddressMode, opcode_info> m_info;
+    // };
+
+
     struct opcode
     {
       uint8_t opcode;
       uint8_t size;
     };
+    
     extern std::map<std::string, std::map<AddressMode, opcode>> ByteTable;
   }
 

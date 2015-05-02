@@ -16,6 +16,11 @@ namespace yasa
       m_realbytes = m_value == 0 ? 1 : (std::log2(m_value) / 8) + 1;
     }
 
+    operator int()
+    {
+      return m_value;
+    }
+
     inline int value()
     {
       return m_value;
