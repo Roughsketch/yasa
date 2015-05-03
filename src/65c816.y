@@ -11,6 +11,7 @@
   #include <cstdio>
   #include <vector>
   #include <map>
+  #include <stack>
   #include <cstring>
   #include "util.hpp"
   #include "assembler.hpp"
@@ -20,8 +21,9 @@
   extern char * yytext;
   extern int yylineno;
 
-  auto *output = new std::vector<yasa::Instruction>();
   int snespos = 0;
+  auto *output = new std::vector<yasa::Instruction>();
+  std::stack<std::string> label_ids;
   std::map<std::string, int> labels;
 
   std::string sp = " ";
@@ -32,7 +34,7 @@
   }
 %}
 
-%token <string>   T_IDENT T_LABEL T_SUBLABEL T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMENT
+%token <string>   T_IDENT T_LABEL T_SUBLABEL T_IMMLABEL T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_COMMENT
 
 %token <string>   T_ADC T_AND T_ASL T_BCC T_BCS T_BEQ T_BIT T_BMI T_BNE T_BPL T_BRA T_BRK T_BRL T_BVC T_BVS T_CLC T_CLD T_CLI T_CLV T_CMP T_COP T_CPX T_CPY T_DEC T_DEX T_DEY T_EOR T_INC T_INX T_INY T_JML T_JMP T_JSR T_LDA T_LDX T_LDY T_LSR T_MVN T_MVP T_NOP T_ORA T_PEA T_PEI T_PER T_PHA T_PHB T_PHD T_PHK T_PHP T_PHX T_PHY T_PLA T_PLB T_PLD T_PLP T_PLX T_PLY T_REP T_ROL T_ROR T_RTI T_RTL T_RTS T_SBC T_SEC T_SED T_SEI T_SEP T_STA T_STP T_STX T_STY T_STZ T_TAX T_TAY T_TCD T_TCS T_TDC T_TRB T_TSB T_TSC T_TSX T_TXA T_TXS T_TXY T_TYA T_TYX T_WAI T_WDM T_XBA T_XCE
 
@@ -51,7 +53,7 @@
 
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
-%type <string> instr index stack accum
+%type <string> instr index stack accum // label
 %type <number> number immnum
 //%type <number> number
 
@@ -382,6 +384,12 @@ accum:  T_ACC         { $$ = new std::string("A"); }
 
 stack:  T_STACK       { $$ = new std::string("S"); }
       ;
+
+// label:  T_NEXTLABEL
+//       | T_PREVLABEL
+//       | T_SUBLABEL
+//       | T_LABEL
+//       ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }
       | T_AND         { $$ = new std::string("AND"); }

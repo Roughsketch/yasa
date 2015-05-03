@@ -1,5 +1,5 @@
 CC=g++
-CXXFLAGS=-c -std=c++11 -U__STRICT_ANSI__
+CXXFLAGS+=-c -std=c++11 -U__STRICT_ANSI__ -DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
 SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp src/instruction.cpp src/test.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa

@@ -95,6 +95,8 @@ namespace test
       #include "../tests/smw/main.inc"
     ;
 
+    set_base_path(TEST_DIRECTORY  "/smw");
+
     scan_string(data);
 
     int result = yyparse();

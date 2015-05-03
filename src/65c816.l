@@ -1,18 +1,78 @@
 %{
   #include <string>
+  #include <iostream>
+  #include <stack>
+  #include <cstdio>
+
   #include "parser.hpp"
 
   #define SAVE_TOKEN  yylval.string = new std::string(yytext, yyleng)
   #define TOKEN(t)    (yylval.token = t)
+
+  namespace include
+  {
+    std::stack<YY_BUFFER_STATE> stack;
+    int max_depth = 10;
+    int depth = 0;
+  }
+
+  std::string base_path;
 %}
 
 %option yylineno
 %option noyywrap
 
+%x incsrc
+
 %%
 
-[ \t]*                          ;
+[ \t]*                          ;                     //  Ignore Whitespace
+;.*                             ;                     //  And comments
 \n                              return TOKEN(T_LINE);
+
+LOROM                           ;
+(?i:incsrc)[ \t]*+              BEGIN(incsrc);
+
+<incsrc>.*+                     {
+                                  if (include::stack.size() >= include::max_depth)
+                                  {
+                                    std::cout << "Error: include depth too deep." << std::endl;
+                                    exit(0);
+                                  }
+
+                                  include::depth++;
+                                  include::stack.push(YY_CURRENT_BUFFER);
+
+                                  std::cout << "Including " << yytext << std::endl;
+
+                                  std::string full_path = base_path + "/" + yytext;
+                                  yyin = fopen(full_path.c_str(), "r");
+
+                                  if (yyin == NULL)
+                                  {
+                                    std::cout << "Could not open file \"" << yytext << "\"" << std::endl;
+                                    exit(0);
+                                  }
+
+                                  yy_switch_to_buffer(yy_create_buffer(yyin, YY_BUF_SIZE));
+
+                                  BEGIN(INITIAL);
+                                }
+
+<<EOF>>                         {
+                                  std::cout << "Include depth: " << include::depth << std::endl;
+                                  if (!include::depth || --(include::depth) == 0)
+                                  {
+                                    yyterminate();
+                                  }
+                                  else
+                                  {
+                                    yy_delete_buffer(YY_CURRENT_BUFFER);
+                                    yy_switch_to_buffer(include::stack.top());
+                                    include::stack.pop();
+                                  }
+                                }
+
 (?i:ADC(\.(b|w|l))?)            return TOKEN(T_ADC);
 (?i:AND(\.(b|w|l))?)            return TOKEN(T_AND);
 (?i:ASL(\.(b|w|l))?)            return TOKEN(T_ASL);
@@ -106,11 +166,12 @@
 (?i:XBA(\.(b|w|l))?)            return TOKEN(T_XBA);
 (?i:XCE(\.(b|w|l))?)            return TOKEN(T_XCE);
 (?i:ORG)                        return TOKEN(T_ORIGIN);
-[a-zA-Z_][a-zA-Z0-9_]*:         SAVE_TOKEN; return TOKEN(T_LABEL);
-\.+[a-zA-Z_][a-zA-Z0-9_]*       SAVE_TOKEN; return TOKEN(T_SUBLABEL);
 [xyXY]                          SAVE_TOKEN; return TOKEN(T_INDEX);
 (?i:a)                          SAVE_TOKEN; return TOKEN(T_ACC);
 (?i:s)                          SAVE_TOKEN; return TOKEN(T_STACK);
+[a-zA-Z_][a-zA-Z0-9_]*:         SAVE_TOKEN; return TOKEN(T_LABEL);
+\.+[a-zA-Z_][a-zA-Z0-9_]*       SAVE_TOKEN; return TOKEN(T_SUBLABEL);
+#[a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_IMMLABEL);
 [a-zA-Z_][a-zA-Z0-9_]*          SAVE_TOKEN; return TOKEN(T_IDENT);
 $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 #$[0-9a-fA-F]+                  SAVE_TOKEN; return TOKEN(T_HEXLIT);
@@ -124,12 +185,16 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 \)                              return TOKEN(T_RPAREN);
 \[                              return TOKEN(T_LBRACKET);
 \]                              return TOKEN(T_RBRACKET);
-;.*                             ;
-.                               printf("Unknown token! %s\n", yytext); yyterminate();
+.                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
 %%
 
 void scan_string(const std::string& str)
 {
   yy_switch_to_buffer(yy_scan_string(str.c_str()));
   yylineno = 1;
+}
+
+void set_base_path(const std::string& path)
+{
+  base_path = path;
 }
