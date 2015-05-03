@@ -185,6 +185,17 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 \)                              return TOKEN(T_RPAREN);
 \[                              return TOKEN(T_LBRACKET);
 \]                              return TOKEN(T_RBRACKET);
+\>\>                            return TOKEN(T_RSHIFT);
+\<\<                            return TOKEN(T_LSHIFT);
+\+                              return TOKEN(T_PLUS);
+\-                              return TOKEN(T_MINUS);
+\*                              return TOKEN(T_MULT);
+\/                              return TOKEN(T_DIV);
+%                               return TOKEN(T_MOD);
+&                               return TOKEN(T_LOGAND);
+\|                              return TOKEN(T_LOGOR);
+\^                              return TOKEN(T_LOGXOR);
+!                               return TOKEN(T_LOGNOT);
 .                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
 %%
 
