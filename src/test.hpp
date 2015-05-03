@@ -6,13 +6,7 @@
 
 #include "parser.hpp"
 
-extern int yyparse();
-extern int yylex();
-extern void scan_string(const std::string& str);
-extern void set_base_path(const std::string& path);
-extern char *yytext;
-extern std::vector<yasa::Instruction> *output;
-extern std::map<std::string, int> labels;
+#include "externs.hpp"
 
 namespace test
 {

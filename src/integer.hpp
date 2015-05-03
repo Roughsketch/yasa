@@ -16,9 +16,66 @@ namespace yasa
       m_realbytes = m_value == 0 ? 1 : (std::log2(m_value) / 8) + 1;
     }
 
+    Integer(int value, int bytes, int real)
+    {
+      m_value = value;
+      m_bytes = bytes;
+      m_realbytes = real;
+    }
+
     operator int()
     {
       return m_value;
+    }
+
+    Integer operator+(Integer& rhs)
+    {
+      return Integer(this->value() + rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator-(Integer& rhs)
+    {
+      return Integer(this->value() - rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator*(Integer& rhs)
+    {
+      return Integer(this->value() * rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator/(Integer& rhs)
+    {
+      return Integer(this->value() / rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator%(Integer& rhs)
+    {
+      return Integer(this->value() % rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator|(Integer& rhs)
+    {
+      return Integer(this->value() | rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator&(Integer& rhs)
+    {
+      return Integer(this->value() & rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator^(Integer& rhs)
+    {
+      return Integer(this->value() ^ rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator>>(Integer& rhs)
+    {
+      return Integer(this->value() >> rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    Integer operator<<(Integer& rhs)
+    {
+      return Integer(this->value() << rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
     }
 
     inline int value()

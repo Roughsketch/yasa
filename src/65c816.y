@@ -385,17 +385,27 @@ block:
         $$->add($4);
       };
 
-number: T_HEX         { $$ = new yasa::Integer(yytext + 1, 16); }
-      | T_ORD         { $$ = new yasa::Integer(yytext + 0, 10); }
-      | T_BIN         { $$ = new yasa::Integer(yytext + 1, 2);  }
+number: number T_PLUS number    { $$ = new yasa::Integer(*$1 + *$3); }
+      | number T_MINUS number   { $$ = new yasa::Integer(*$1 - *$3); }
+      | number T_MULT number    { $$ = new yasa::Integer(*$1 * *$3); }
+      | number T_DIV number     { $$ = new yasa::Integer(*$1 / *$3); }
+      | number T_MOD number     { $$ = new yasa::Integer(*$1 % *$3); }
+      | number T_LOGAND number  { $$ = new yasa::Integer(*$1 & *$3); }
+      | number T_LOGOR number   { $$ = new yasa::Integer(*$1 | *$3); }
+      | number T_LOGXOR number  { $$ = new yasa::Integer(*$1 ^ *$3); }
+      | number T_RSHIFT number  { $$ = new yasa::Integer(*$1 >> *$3); }
+      | number T_LSHIFT number  { $$ = new yasa::Integer(*$1 << *$3); }
+      | T_HEX                   { $$ = new yasa::Integer(yytext + 1, 16); }
+      | T_ORD                   { $$ = new yasa::Integer(yytext + 0, 10); }
+      | T_BIN                   { $$ = new yasa::Integer(yytext + 1, 2);  }
       ;
 
-immnum: T_HEXLIT      { $$ = new yasa::Integer(yytext + 2, 16);  }
-      | T_ORDLIT      { $$ = new yasa::Integer(yytext + 1, 10);  }
-      | T_BINLIT      { $$ = new yasa::Integer(yytext + 2, 2);   }
+immnum: T_HEXLIT                { $$ = new yasa::Integer(yytext + 2, 16);  }
+      | T_ORDLIT                { $$ = new yasa::Integer(yytext + 1, 10);  }
+      | T_BINLIT                { $$ = new yasa::Integer(yytext + 2, 2);   }
       ;
 
-index:  T_INDEX       {
+index:  T_INDEX {
           if (yytext[0] == 'X' || yytext[0] == 'x')
           {
             $$ = new std::string("X");
