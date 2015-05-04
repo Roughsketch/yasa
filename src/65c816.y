@@ -86,7 +86,7 @@
 
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
-%type <string>      instr index stack accum define // label
+%type <string>      instr index stack accum define label
 %type <number>      number immnum
 //%type <number> number
 
@@ -96,19 +96,10 @@
 program: input { output = new std::vector<yasa::Instruction>(*$1); }
       ;
 
-input:   /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
-      |  input line  { $$ = new std::vector<yasa::Instruction>(*$1); $$->insert($$->end(), $2->begin(), $2->end()); }
-      ;
-
-line:   expr {
-          $$ = new std::vector<yasa::Instruction>();
-          $$->push_back(*$1); snespos += $1->size(); 
-        }
-      | expr T_SEPARATOR expr T_LINE {
-          $$ = new std::vector<yasa::Instruction>();
-          $$->push_back(*$1); 
-          $$->push_back(*$3); 
-          snespos += $1->size() + $3->size();
+input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
+      | input line  {
+          $$ = new std::vector<yasa::Instruction>(*$1);
+          $$->insert($$->end(), $2->begin(), $2->end()); 
         }
       | label { 
           $$ = new std::vector<yasa::Instruction>();
@@ -121,14 +112,26 @@ line:   expr {
       | command { 
           $$ = new std::vector<yasa::Instruction>(); 
         }
-      | T_LINE { 
-          $$ = new std::vector<yasa::Instruction>();
-        }
       | define T_EQUAL number { 
           $$ = new std::vector<yasa::Instruction>();
 
           std::cout << "Got here" << std::endl;
           std::cout << *$1 << " = " << *$3 << std::endl;
+        }
+      ;
+
+line:   expr {
+          $$ = new std::vector<yasa::Instruction>();
+          $$->push_back(*$1); snespos += $1->size(); 
+        }
+      | expr T_SEPARATOR expr T_LINE {
+          $$ = new std::vector<yasa::Instruction>();
+          $$->push_back(*$1); 
+          $$->push_back(*$3); 
+          snespos += $1->size() + $3->size();
+        }
+      | T_LINE { 
+          $$ = new std::vector<yasa::Instruction>();
         }
       ;
 
@@ -190,7 +193,7 @@ immediate:
         if ($2->size() > 2)
         {
           std::cout << "Error: Immediate parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         $$ = new yasa::Instruction(*$1, yasa::Immediate, snespos);
@@ -206,7 +209,7 @@ direct:
         if ($2->size() > 3)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         auto mode = size == 1 ? yasa::Direct : size == 2 ? yasa::Absolute : yasa::Absolute_Long;
@@ -221,7 +224,7 @@ indirect:
         if ($3->value() > 0xFFFF)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         $$ = new yasa::Instruction(*$1, yasa::Indirect, snespos);
@@ -237,7 +240,7 @@ indexed:
         if (value > 0xFFFFFF) 
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         if (*$4 == "X")
@@ -266,7 +269,7 @@ indirect_indexed:
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            exit(0);
+            YYABORT;
           }
 
           $$ = new yasa::Instruction(*$1, *$5 == "X" ? yasa::Indirect_X : yasa::Indirect_Y, snespos);
@@ -277,7 +280,7 @@ indirect_indexed:
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            exit(0);
+            YYABORT;
           }
 
 
@@ -289,7 +292,7 @@ indirect_indexed:
           else
           {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
-            exit(0);
+            YYABORT;
           }
         }
       ;
@@ -300,7 +303,7 @@ stack_relative:
         if ($2->value() > 0xFF)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2->value()) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         $$ = new yasa::Instruction(*$1, yasa::Stack, snespos);
@@ -314,7 +317,7 @@ stack_relative_indirect:
         if ($3->value() > 0xFF)
         {
           std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         if (*$8 == "Y")
@@ -325,7 +328,7 @@ stack_relative_indirect:
         else
         {
           std::cout << "Error: non-Y register used with stack relative indirect indexed mode. (line " << yylineno << ")" << std::endl;
-          exit(0);
+          YYABORT;
         }
       }
       ;
@@ -345,7 +348,7 @@ indirect_long:
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            exit(0);
+            YYABORT;
           }
 
           $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, snespos);
@@ -356,7 +359,7 @@ indirect_long:
           if ($3->value() > 0xFF)
           {
             std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            exit(0);
+            YYABORT;
           }
 
           if (*$6 == "Y")
@@ -367,7 +370,7 @@ indirect_long:
           else
           {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
-            exit(0);
+            YYABORT;
           }
 
         }
@@ -380,7 +383,7 @@ block:
         if ($2->value() > 0xFF || $4->value() > 0xFF)
         {
           std::cout << "Error: parameter for block bigger than allowed size of 1 byte. (line " << yylineno << ")" << std::endl;
-          exit(0);
+          YYABORT;
         }
 
         $$ = new yasa::Instruction(*$1, yasa::Block, snespos);
@@ -430,7 +433,7 @@ index:  T_INDEX {
           else
           {
             std::cout << "Error: Invalid index register " << yytext << " (line " << yylineno << ")" << std::endl;
-            exit(0);
+            YYABORT;
           }
         }
       ;
@@ -453,7 +456,7 @@ label:  T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos))
             if (i > label_ids.size())
             {
               std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-              exit(0);
+              YYABORT;
             }
 
             sublabel += label_ids[i] + "_";
@@ -473,10 +476,11 @@ label:  T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos))
           label_ids.push_back(id);
         }
       | T_LABEL     {
-          $$ = new std::string(yytext);
-          $$ = $$->substr(0, $$->size() - 1); //  Get rid of trailing :
+          //  Get rid of trailing :
+          std::string temp = std::string(yytext).substr(0, $$->size() - 1);
+          $$ = new std::string(temp);
 
-          label_ids.clear()
+          label_ids.clear();
           label_ids.push_back(*$$);
         }
       ;
