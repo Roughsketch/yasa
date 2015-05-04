@@ -1,6 +1,6 @@
 CC=g++
-CXXFLAGS+=-c -std=c++11 -U__STRICT_ANSI__ -DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
-SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp src/instruction.cpp src/test.cpp
+CXXFLAGS+=-c -std=c++11 -U__STRICT_ANSI__
+SRCS=src/parser.cpp src/tokens.cpp src/main.cpp src/assembler.cpp src/instruction.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa
 
@@ -18,7 +18,13 @@ flex:
 bison:
 	win_bison.exe -d -o src/parser.cpp src/65c816.y
 
+debug: CXXFLAGS+=-DDEBUG_TEST
+debug: CXXFLAGS+=-DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
+debug: SRCS+=src/test.cpp
+debug: flex bison $(SRCS) $(EXE)
+
+
 rebuild: clean all
 
 clean:
-	rm *.o
+	rm src/*.o

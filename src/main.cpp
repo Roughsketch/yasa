@@ -4,33 +4,52 @@
 #include <vector>
 
 #include "parser.hpp"
-#include "test.hpp"
 #include "externs.hpp"
+
+#ifdef DEBUG_TEST
+  #include "test.hpp"
+#endif
+
+void usage();
 
 int main(int argc, char *argv[])
 {
   if (argc == 1)
   {
-    test::run_tests(); 
+    #ifdef DEBUG_TEST
+      test::run_tests();
+    #else
+      yyparse();
+      //usage();
+    #endif
   }
   else
   {
-    std::cout << "Parsing " << argv[1] << std::endl;
-
-    FILE *fp = fopen(argv[1], "r");
-
-    if (fp == NULL)
+    for (int i = 1; i < argc; i++)
     {
-      std::cout << "Could not open file." << std::endl;
-      return 1;
+      FILE *fp = fopen(argv[i], "r");
+
+      if (fp == NULL)
+      {
+        std::cout << "Could not open file." << std::endl;
+        return 1;
+      }
+
+      std::cout << "Parsing " << argv[1] << std::endl;
+
+      yyin = fp;
+      std::cout << "Result: " << yyparse() << std::endl;
+
+      fclose(fp);
     }
-
-
-    yyin = fp;
-    std::cout << "Result: " << yyparse() << std::endl;
-
-    fclose(fp);
   }
 
   return 0;
+}
+
+void usage()
+{
+  std::cout << R"(
+    Usage: yasa <file>.asm
+    )" << std::endl;
 }
