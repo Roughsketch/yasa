@@ -30,8 +30,11 @@
 ;.*                             ;                     //  And comments
 \n                              return TOKEN(T_LINE);
 
-LOROM                           ;
+(?i:LOROM)                      ;
+(?i:HEADER)                     ;
 (?i:incsrc)[ \t]*+              BEGIN(incsrc);
+![a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_DEFINE);
+
 
 <incsrc>.*+                     {
                                   if (include::stack.size() >= include::max_depth)
@@ -196,6 +199,7 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 \|                              return TOKEN(T_LOGOR);
 \^                              return TOKEN(T_LOGXOR);
 !                               return TOKEN(T_LOGNOT);
+=                               return TOKEN(T_EQUAL);
 .                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
 %%
 

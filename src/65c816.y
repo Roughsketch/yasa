@@ -12,7 +12,8 @@
   #include <vector>
   #include <map>
   #include <stack>
-  #include <cstring>
+  #include <string>
+
   #include "util.hpp"
   #include "assembler.hpp"
 
@@ -23,11 +24,10 @@
 
   int snespos = 0;
   auto *output = new std::vector<yasa::Instruction>();
-  std::stack<std::string> label_ids;
+  std::vector<std::string> label_ids;
   std::map<std::string, int> labels;
 
-  std::string sp = " ";
-  std::string nl = "\n";
+  int minus_label = 0;  //  Address of last - label
 
   void yyerror(const char *s) {
     printf("ERROR: %s (line %d)\n", s, yylineno); 
@@ -61,10 +61,10 @@
 %token <string>   T_ACC T_STACK T_INDEX 
 
 //  Assembler commands
-%token <string>   T_ORIGIN
+%token <string>   T_ORIGIN T_DEFINE
 
 //  Math
-%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT 
+%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL
 
 //  Math precedence
 %left T_LOGOR
@@ -86,7 +86,7 @@
 
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
-%type <string>      instr index stack accum // label
+%type <string>      instr index stack accum define // label
 %type <number>      number immnum
 //%type <number> number
 
@@ -110,7 +110,7 @@ line:   expr {
           $$->push_back(*$3); 
           snespos += $1->size() + $3->size();
         }
-      | T_LABEL { 
+      | label { 
           $$ = new std::vector<yasa::Instruction>();
 
           std::string name = std::string(yytext);
@@ -118,18 +118,21 @@ line:   expr {
 
           labels[name] = snespos;
         }
-      | T_LINE T_SUBLABEL T_LINE {
-          $$ = new std::vector<yasa::Instruction>();
-
-          labels[std::string(yytext).substr(1)] = snespos;
-        }
       | command { 
           $$ = new std::vector<yasa::Instruction>(); 
         }
       | T_LINE { 
           $$ = new std::vector<yasa::Instruction>();
         }
+      | define T_EQUAL number { 
+          $$ = new std::vector<yasa::Instruction>();
+
+          std::cout << "Got here" << std::endl;
+          std::cout << *$1 << " = " << *$3 << std::endl;
+        }
       ;
+
+define: T_DEFINE { $$ = new std::string(yytext); }
 
 command:
         T_ORIGIN number {
@@ -395,6 +398,16 @@ number: number T_PLUS number    { $$ = new yasa::Integer(*$1 + *$3); }
       | number T_LOGXOR number  { $$ = new yasa::Integer(*$1 ^ *$3); }
       | number T_RSHIFT number  { $$ = new yasa::Integer(*$1 >> *$3); }
       | number T_LSHIFT number  { $$ = new yasa::Integer(*$1 << *$3); }
+      // | label T_PLUS number     { $$ = new yasa::Integer(*$1 + *$3); }
+      // | label T_MINUS number    { $$ = new yasa::Integer(*$1 - *$3); }
+      // | label T_MULT number     { $$ = new yasa::Integer(*$1 * *$3); }
+      // | label T_DIV number      { $$ = new yasa::Integer(*$1 / *$3); }
+      // | label T_MOD number      { $$ = new yasa::Integer(*$1 % *$3); }
+      // | label T_LOGAND number   { $$ = new yasa::Integer(*$1 & *$3); }
+      // | label T_LOGOR number    { $$ = new yasa::Integer(*$1 | *$3); }
+      // | label T_LOGXOR number   { $$ = new yasa::Integer(*$1 ^ *$3); }
+      // | label T_RSHIFT number   { $$ = new yasa::Integer(*$1 >> *$3); }
+      // | label T_LSHIFT number   { $$ = new yasa::Integer(*$1 << *$3); }
       | T_HEX                   { $$ = new yasa::Integer(yytext + 1, 16); }
       | T_ORD                   { $$ = new yasa::Integer(yytext + 0, 10); }
       | T_BIN                   { $$ = new yasa::Integer(yytext + 1, 2);  }
@@ -428,11 +441,45 @@ accum:  T_ACC         { $$ = new std::string("A"); }
 stack:  T_STACK       { $$ = new std::string("S"); }
       ;
 
-// label:  T_NEXTLABEL
-//       | T_PREVLABEL
-//       | T_SUBLABEL
-//       | T_LABEL
-//       ;
+label:  T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos)); }
+      | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(snespos)); }
+      | T_SUBLABEL  {
+          std::string sublabel = "";
+          std::string id = std::string(yytext);
+          int i;
+
+          while (id[i] == '.')
+          {
+            if (i > label_ids.size())
+            {
+              std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
+              exit(0);
+            }
+
+            sublabel += label_ids[i] + "_";
+            i++;
+          }
+
+          id = id.substr(i);
+
+          //  Sublabel was dedented
+          if (i != label_ids.size())
+          {
+            label_ids.erase(label_ids.begin() + i, label_ids.end());
+            label_ids.push_back(id);
+          }
+
+          $$ = new std::string(sublabel + id);
+          label_ids.push_back(id);
+        }
+      | T_LABEL     {
+          $$ = new std::string(yytext);
+          $$ = $$->substr(0, $$->size() - 1); //  Get rid of trailing :
+
+          label_ids.clear()
+          label_ids.push_back(*$$);
+        }
+      ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }
       | T_AND         { $$ = new std::string("AND"); }
