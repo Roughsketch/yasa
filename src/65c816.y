@@ -101,22 +101,19 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
           $$ = new std::vector<yasa::Instruction>(*$1);
           $$->insert($$->end(), $2->begin(), $2->end()); 
         }
-      | label { 
-          $$ = new std::vector<yasa::Instruction>();
+      | input label { 
+          $$ = $1;
 
-          std::string name = std::string(yytext);
-          name = name.substr(0, name.length() - 1);
-
-          labels[name] = snespos;
+          labels[*$2] = snespos;
         }
-      | command { 
-          $$ = new std::vector<yasa::Instruction>(); 
+      | input command { 
+          $$ = $1; 
         }
-      | define T_EQUAL number { 
-          $$ = new std::vector<yasa::Instruction>();
+      | input define T_EQUAL number { 
+          $$ = $1;
 
           std::cout << "Got here" << std::endl;
-          std::cout << *$1 << " = " << *$3 << std::endl;
+          std::cout << *$2 << " = " << *$4 << std::endl;
         }
       ;
 
@@ -159,14 +156,10 @@ expr:   implied
       ;
 
 temp_label:
-        instr T_IDENT {
-          $$ = new yasa::Instruction(*$1, yasa::Label, snespos);
-          $$->set_label(yytext);
-        }
-      | instr T_SUBLABEL {
-          $$ = new yasa::Instruction(*$1, yasa::Label, snespos);
-          $$->set_label(yytext);
-        }
+      instr T_IDENT {
+        $$ = new yasa::Instruction(*$1, yasa::Label, snespos);
+        $$->set_label(yytext);
+      }
       ;
 
 implied: 
@@ -444,9 +437,11 @@ accum:  T_ACC         { $$ = new std::string("A"); }
 stack:  T_STACK       { $$ = new std::string("S"); }
       ;
 
-label:  T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos)); }
-      | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(snespos)); }
-      | T_SUBLABEL  {
+
+      //   T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos)); }
+      // | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(snespos)); }
+      // | 
+label:  T_SUBLABEL  {
           std::string sublabel = "";
           std::string id = std::string(yytext);
           int i;
@@ -477,8 +472,9 @@ label:  T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos))
         }
       | T_LABEL     {
           //  Get rid of trailing :
-          std::string temp = std::string(yytext).substr(0, $$->size() - 1);
-          $$ = new std::string(temp);
+          std::string temp = std::string(yytext);
+
+          $$ = new std::string(temp.substr(0, temp.size() - 1));
 
           label_ids.clear();
           label_ids.push_back(*$$);
