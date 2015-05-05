@@ -16,6 +16,7 @@ namespace test
   bool smwc_duck();
   bool smwc_disable_goal_right_walk();
   bool super_mario_world();
+  bool math();
 }
 
 #endif

@@ -72,6 +72,7 @@ namespace test
     success &= smwc_duck();
     success &= smwc_disable_goal_right_walk();
     success &= super_mario_world();
+    success &= math();
 
     return success;
   }
@@ -125,6 +126,19 @@ namespace test
       #include "../tests/smwc/org.dat"
     };
 
-    return run("smwc_disable_goal_right_walk", data, correct, TEST_DIRECTORY "/smw");
+    return run("super_mario_world", data, correct, TEST_DIRECTORY "/smw");
+  }
+
+  bool math()
+  {
+    std::string data = 
+      #include "../tests/math.inc"
+    ;
+
+    std::vector<uint8_t> correct = {
+      #include "../tests/math.dat"
+    };
+
+    return run("math", data, correct);
   }
 }
