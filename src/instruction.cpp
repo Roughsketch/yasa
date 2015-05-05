@@ -9,8 +9,7 @@ namespace yasa
 
     if (!success)
     {
-      std::cout << "No opcode for " << instr << std::endl;
-      exit(0);
+      throw InvalidInstructionException(instr);
     }
 
     m_data.push_back(op); 

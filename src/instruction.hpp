@@ -2,6 +2,8 @@
 #define YASA_INSTRUCTION
 
 #include <string>
+#include <exception>
+#include <stdexcept>
 
 #include "mode.hpp"
 #include "integer.hpp"
@@ -9,6 +11,12 @@
 
 namespace yasa
 {
+  class InvalidInstructionException : public std::runtime_error
+  {
+  public:
+    InvalidInstructionException(std::string inst) : std::runtime_error("Invalid instruction found: " + inst) {};
+  };
+
   struct Instruction
   {
     Instruction(std::string &instr, AddressMode mode, int snespos);
