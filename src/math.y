@@ -19,7 +19,7 @@
   yasa::Integer *math_output;
 
   void matherror(std::map<std::string, int>& t, const char *s) {
-    printf("ERROR: %s (line %d)\n", s, mathlineno); 
+    std::cout << "ERROR: " << s << " (line " << mathlineno << ")" << std::endl;
   }
 
   #define MATHFPRINTF (stderr, format, args) puts(format)
@@ -50,31 +50,33 @@
 %union {
     std::string *string;
     int token;
-    yasa::Integer *number;
+    int number;
+    yasa::Integer *yasa_integer;
 }
 
-%type <number> bare imm label number math value
+%type <yasa_integer>  value
+%type <number>  bare imm label number math
 
 %start value
 
 %%
 
-value:  math T_END              { std::cout << "Value: " << *$1 << std::endl; math_output = $1; exit(0); }
+value:  math T_END              { std::cout << "Value: " << $1 << std::endl; math_output = new yasa::Integer($1); exit(0); }
       ;
 
-bare:   T_HEX                   { $$ = new yasa::Integer(mathtext + 1, 16); }
-      | T_ORD                   { $$ = new yasa::Integer(mathtext + 0, 10); }
-      | T_BIN                   { $$ = new yasa::Integer(mathtext + 1, 2);  }
+bare:   T_HEX                   { $$ = strtol(mathtext + 1, NULL, 16); }
+      | T_ORD                   { $$ = strtol(mathtext + 0, NULL, 10); }
+      | T_BIN                   { $$ = strtol(mathtext + 1, NULL, 2);  }
       ;
 
-imm:    T_HEXLIT                { $$ = new yasa::Integer(mathtext + 2, 16);  }
-      | T_ORDLIT                { $$ = new yasa::Integer(mathtext + 1, 10);  }
-      | T_BINLIT                { $$ = new yasa::Integer(mathtext + 2, 2);   }
+imm:    T_HEXLIT                { $$ = strtol(mathtext + 2, NULL, 16);  }
+      | T_ORDLIT                { $$ = strtol(mathtext + 1, NULL, 10);  }
+      | T_BINLIT                { $$ = strtol(mathtext + 2, NULL, 2);   }
       ;
 
-label:  T_IDENT                 { $$ = new yasa::Integer(identifiers[std::string(mathtext)]); }
-      | T_SUBLABEL              { $$ = new yasa::Integer(identifiers[std::string(mathtext)]); }
-      | T_IMMLABEL              { $$ = new yasa::Integer(identifiers[std::string(mathtext)]); }
+label:  T_IDENT                 { $$ = identifiers[std::string(mathtext)]; }
+      | T_SUBLABEL              { $$ = identifiers[std::string(mathtext)]; }
+      | T_IMMLABEL              { $$ = identifiers[std::string(mathtext)]; }
       ;
 
 number: bare                    { $$ = $1; }
@@ -82,16 +84,16 @@ number: bare                    { $$ = $1; }
       | label                   { $$ = $1; }
       ;
 
-math:   math T_PLUS math        { $$ = new yasa::Integer(*$1 + *$3); }
-      | math T_MINUS math       { $$ = new yasa::Integer(*$1 - *$3); }
-      | math T_MULT math        { $$ = new yasa::Integer(*$1 * *$3); }
-      | math T_DIV math         { $$ = new yasa::Integer(*$1 / *$3); }
-      | math T_MOD math         { $$ = new yasa::Integer(*$1 % *$3); }
-      | math T_LOGAND math      { $$ = new yasa::Integer(*$1 & *$3); }
-      | math T_LOGOR math       { $$ = new yasa::Integer(*$1 | *$3); }
-      | math T_LOGXOR math      { $$ = new yasa::Integer(*$1 ^ *$3); }
-      | math T_RSHIFT math      { $$ = new yasa::Integer(*$1 >> *$3); }
-      | math T_LSHIFT math      { $$ = new yasa::Integer(*$1 << *$3); }
+math:   math T_PLUS math        { $$ = $1 + $3; }
+      | math T_MINUS math       { $$ = $1 - $3; }
+      | math T_MULT math        { $$ = $1 * $3; }
+      | math T_DIV math         { $$ = $1 / $3; }
+      | math T_MOD math         { $$ = $1 % $3; }
+      | math T_LOGAND math      { $$ = $1 & $3; }
+      | math T_LOGOR math       { $$ = $1 | $3; }
+      | math T_LOGXOR math      { $$ = $1 ^ $3; }
+      | math T_RSHIFT math      { $$ = $1 >> $3; }
+      | math T_LSHIFT math      { $$ = $1 << $3; }
       | T_LPAREN math T_RPAREN  { $$ = $2; }
       | number
       ;
