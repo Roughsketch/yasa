@@ -49,3 +49,6 @@ src/parser.output
 src/parser.cpp
 src/parser.hpp
 src/tokens.cpp
+src/math_parser.cpp
+src/math_parser.hpp
+src/math_tokens.cpp

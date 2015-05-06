@@ -1,6 +1,8 @@
 #ifndef YASA_EXTERNS
 #define YASA_EXTERNS
 
+#include "math_externs.hpp"
+
 extern int yyparse();
 extern int yylex();
 

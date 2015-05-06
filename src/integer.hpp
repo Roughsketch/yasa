@@ -14,13 +14,23 @@ namespace yasa
       m_value = strtol(str, NULL, base);
       m_bytes = strlen(str) / 2 + strlen(str) % 2;
       m_realbytes = m_value == 0 ? 1 : (std::log2(m_value) / 8) + 1;
+      std::cout << "Integer value: " << m_value << std::endl;
     }
 
-    Integer(int value, int bytes, int real)
+    Integer(int value, int bytes = 0, int real = 0)
     {
       m_value = value;
+
+      if (bytes == 0)
+      {
+        bytes = m_value == 0 ? 1 : (std::log2(m_value) / 8) + 1;
+        real = bytes;
+      }
+
       m_bytes = bytes;
       m_realbytes = real;
+
+      std::cout << "Integer value: " << m_value << std::endl;
     }
 
     operator int()
@@ -76,6 +86,11 @@ namespace yasa
     Integer operator<<(Integer& rhs)
     {
       return Integer(this->value() << rhs.value(), std::max(m_bytes, rhs.size()), std::max(m_realbytes, rhs.realsize()));
+    }
+
+    inline int parse()
+    {
+
     }
 
     inline int value()

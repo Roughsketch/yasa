@@ -23,6 +23,15 @@ int main(int argc, char *argv[])
       //usage();
     #endif
   }
+  else if (std::string(argv[1]) == "-m")
+  {
+    std::map<std::string, int> temp;
+    mathparse(temp);
+  }
+  else if (std::string(argv[1]) == "-n")
+  {
+    yyparse();
+  }
   else
   {
     for (int i = 1; i < argc; i++)
