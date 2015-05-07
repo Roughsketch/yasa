@@ -52,3 +52,4 @@ src/tokens.cpp
 src/math_parser.cpp
 src/math_parser.hpp
 src/math_tokens.cpp
+*.out
