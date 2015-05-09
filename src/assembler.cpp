@@ -41,7 +41,7 @@ namespace yasa
       {"BNE", {{Label, {{2, 0xD0}}}}},
       {"BPL", {{Label, {{2, 0x10}}}}},
       {"BRA", {{Label, {{2, 0x80}}}}},
-      {"BRK", {{Implied, {{1, 0x00}}}, {Immediate, {{2, 0x00}}}}},
+      {"BRK", {{Implied, {{2, 0x00}}}, {Immediate, {{2, 0x00}}}}},
       {"BRL", {{Label, {{3, 0x82}}}}},
       {"BVC", {{Label, {{2, 0x50}}}}},
       {"BVS", {{Label, {{2, 0x70}}}}},
@@ -60,7 +60,7 @@ namespace yasa
                {Indexed_X, {{2, 0xD5}, {3, 0xDD}, {4, 0xDF}}},
                {Indirect_Long_Y, {{2, 0xD7}}},
                {Indexed_Y, {{3, 0xD9}}}}},
-      {"COP", {{Implied, {{1, 0x02}}}, {Immediate, {{2, 0x02}}}}},
+      {"COP", {{Implied, {{2, 0x02}}}, {Immediate, {{2, 0x02}}}}},
       {"CPX", {{Immediate, {{2, 0xE0}}},
                {Direct, {{2, 0xE4}, {3, 0xEC}}}}},
       {"CPY", {{Immediate, {{2, 0xC0}}},
@@ -199,7 +199,7 @@ namespace yasa
       {"TYA", {{Implied, {{1, 0x98}}}}},
       {"TYX", {{Implied, {{1, 0xBB}}}}},
       {"WAI", {{Implied, {{1, 0xCB}}}}},
-      {"WDM", {{Implied, {{1, 0x42}}}, {Immediate, {{2, 0x42}}}}},
+      {"WDM", {{Implied, {{2, 0x42}}}, {Immediate, {{2, 0x42}}}}},
       {"XBA", {{Implied, {{1, 0xEB}}}}},
       {"XCE", {{Implied, {{1, 0xFB}}}}}
     };
@@ -210,7 +210,7 @@ namespace yasa
     return (detail::ByteTable[instr].count(mode) == 1) && (detail::ByteTable[instr][mode].count(size) == 1);
   }
 
-  uint8_t get_byte(std::string instr, AddressMode &mode, int size, bool &success)
+  uint8_t get_byte(std::string instr, AddressMode &mode, int size)
   {
     static std::vector<std::string> modes = {
       "Immediate",
@@ -233,19 +233,7 @@ namespace yasa
     {
       return detail::ByteTable[instr][mode][size];
     }
-    else
-    {
-      std::cout << "Not in table" << std::endl;
-    }
 
-    if ((detail::ByteTable.count(instr) == 1) && (detail::ByteTable[instr].count(mode) == 1) && (detail::ByteTable[instr][mode].count(size) == 1))
-    {
-      return detail::ByteTable[instr][mode][size];
-    }
-
-    std::cout << (detail::ByteTable.count(instr) == 1) << (detail::ByteTable[instr].count(mode) == 1) << (detail::ByteTable[instr][mode].count(size) == 1) << std::endl;
-
-
-    throw InvalidInstructionException("Invalid instruction found: " + instr + " with size " + util::to_string(size));
+    throw InvalidInstructionException("Invalid instruction found: " + instr + " with size " + util::to_string(size) + " and mode " + modes[mode]);
   }
 }

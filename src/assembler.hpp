@@ -42,7 +42,7 @@ namespace yasa
     extern std::map<std::string, std::map<AddressMode, std::map<int, int>>> ByteTable;
   }
 
-  uint8_t get_byte(std::string instr, AddressMode &mode, int size, bool &success);
+  uint8_t get_byte(std::string instr, AddressMode &mode, int size);
 }
 
 #endif

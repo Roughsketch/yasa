@@ -12,8 +12,7 @@ namespace yasa
 
     if (m_mode == Implied)
     {
-      bool success;
-      m_opcode = get_byte(instr, mode, 1, success);
+      m_opcode = get_byte(instr, mode, 1);
     }
 
 
