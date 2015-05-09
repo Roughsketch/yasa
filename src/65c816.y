@@ -23,11 +23,14 @@
   extern int yylineno;
 
   int snespos = 0;
-  auto *output = new std::vector<yasa::Instruction>();
+  int max_address = 0;
+  int minus_label = 0;  //  Address of last - label
+
+  auto *instructions = new std::vector<yasa::Instruction>();
+
   std::vector<std::string> label_ids;
   std::map<std::string, int> labels;
 
-  int minus_label = 0;  //  Address of last - label
 
   void yyerror(const char *s) {
     printf("ERROR: %s (line %d)\n", s, yylineno); 
@@ -85,15 +88,15 @@
 }
 
 %type <instrvec>    input line
-%type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block temp_label 
-%type <string>      instr index stack accum define label
+%type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block 
+%type <string>      instr index stack accum define label math immmath
 %type <number>      number immnum
 //%type <number> number
 
 %start program
 
 %%
-program: input { output = new std::vector<yasa::Instruction>(*$1); }
+program: input { instructions = new std::vector<yasa::Instruction>(*$1); }
       ;
 
 input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
@@ -102,9 +105,17 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
           $$->insert($$->end(), $2->begin(), $2->end()); 
         }
       | input label { 
+          std::cout << "Label: " << yytext << std::endl;
           $$ = $1;
 
           labels[*$2] = snespos;
+
+          if (max_address < snespos)
+          {
+            max_address = snespos + 4;  //  Add 4 to make sure it can fit any instruction
+          }
+
+          std::cout << "SNES Addr: " << snespos << " Max Addr: " << max_address << std::endl;
         }
       | input command { 
           $$ = $1; 
@@ -119,7 +130,8 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
 
 line:   expr {
           $$ = new std::vector<yasa::Instruction>();
-          $$->push_back(*$1); snespos += $1->size(); 
+          $$->push_back(*$1); snespos += $1->size();
+          std::cout << "Expr size: " << $1->size() << std::endl;
         }
       | expr T_SEPARATOR expr T_LINE {
           $$ = new std::vector<yasa::Instruction>();
@@ -152,135 +164,173 @@ expr:   implied
       | accumulator
       | indirect_long
       | block
-      | temp_label
-      ;
-
-temp_label:
-      instr T_IDENT {
-        $$ = new yasa::Instruction(*$1, yasa::Label, snespos);
-        $$->set_label(yytext);
-      }
       ;
 
 implied: 
-      instr {
-        // puts("Implied");
-        $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
+        instr T_LINE {
+          puts("Implied");
+          $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
+          puts("Implied Done");
 
-        //  If op was an implied BRK or COP, then push back another 0
-        switch ($$->opcode())
-        {
-          case 0x00:  // BRK
-          case 0x02:  // COP
-          case 0x42:  // WDM
-            $$->add(new yasa::Integer("0"));
-            break;
+          //  If op was an implied BRK or COP, then push back another 0
+          switch ($$->opcode())
+          {
+            case 0x00:  // BRK
+            case 0x02:  // COP
+            case 0x42:  // WDM
+              $$->add("0");
+              break;
+          }
+          puts("Implied Done");
         }
-      };
+      | instr T_SEPARATOR {
+          puts("Implied");
+          $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
+          puts("Implied Done");
+
+          //  If op was an implied BRK or COP, then push back another 0
+          switch ($$->opcode())
+          {
+            case 0x00:  // BRK
+            case 0x02:  // COP
+            case 0x42:  // WDM
+              $$->add("0");
+              break;
+          }
+          puts("Implied Done");
+        }
+      ;
 
 immediate:
-      instr immnum { 
-        // puts("Immediate");
-        int value = $2->value();
-
-        if ($2->size() > 2)
-        {
-          std::cout << "Error: Immediate parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          YYABORT;
-        }
+      instr immmath { 
+        puts("Immediate");
 
         $$ = new yasa::Instruction(*$1, yasa::Immediate, snespos);
-        $$->add($2);
+
+        if (util::isnum(*$2))
+        {
+          $$->add(*$2); 
+        }
+        else
+        {
+          $$->defer(*$2);
+        }
       };
 
 direct:
-      instr number { 
-        // puts("Direct");
-        int value = $2->value();
-        int size = $2->size();
+      instr math { 
+        std::cout << "Direct: " << *$2 << std::endl;
+        puts("Direct");
+        // int value = $2->value();
+        // int size = $2->size();
 
-        if ($2->size() > 3)
+        // if ($2->size() > 3)
+        // {
+        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
+        //   YYABORT;
+        // }
+
+        $$ = new yasa::Instruction(*$1, yasa::Direct, snespos);
+
+        if (util::isnum(*$2))
         {
-          std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          YYABORT;
+          $$->add(*$2); 
         }
-
-        auto mode = size == 1 ? yasa::Direct : size == 2 ? yasa::Absolute : yasa::Absolute_Long;
-
-        $$ = new yasa::Instruction(*$1, mode, snespos);
-        $$->add($2);
+        else
+        {
+          $$->defer(*$2);
+        }
       };
 
 indirect:
-      instr T_LPAREN number T_RPAREN { 
-        // puts("Indirect");
-        if ($3->value() > 0xFFFF)
-        {
-          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-          YYABORT;
-        }
+      instr T_LPAREN math T_RPAREN { 
+        puts("Indirect");
+        // if ($3->value() > 0xFFFF)
+        // {
+        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
+        //   YYABORT;
+        // }
 
         $$ = new yasa::Instruction(*$1, yasa::Indirect, snespos);
-        $$->add($3);
+
+        if (util::isnum(*$3))
+        {
+          $$->add(*$3);
+        }
+        else
+        {
+          $$->defer(*$3);
+        }
       };
 
 indexed:
-      instr number T_COMMA index {
-        // puts("Indexed");
-        int value = $2->value();
-        int size = $2->size();
+      instr math T_COMMA index {
+        puts("Indexed");
+        // int value = $2->value();
+        // int size = $2->size();
 
-        if (value > 0xFFFFFF) 
-        {
-          std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-          YYABORT;
-        }
+        // if (value > 0xFFFFFF) 
+        // {
+        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
+        //   YYABORT;
+        // }
 
         if (*$4 == "X")
         {
           
-          auto mode = size == 1 ? yasa::Direct_X : size == 2 ? yasa::Absolute_X : yasa::Absolute_Long_X;
-          $$ = new yasa::Instruction(*$1, mode, snespos);
-          $$->add($2);
+          $$ = new yasa::Instruction(*$1, yasa::Indexed_X, snespos);
+
+          if (util::isnum(*$2))
+          {
+            $$->add(*$2); 
+          }
+          else
+          {
+            $$->defer(*$2);
+          }
         }
         else if (*$4 == "Y")
         {
-          if (size > 2)
-          {
-            std::cout << "Error: byte size too big for Y indexed call (line " << yylineno << ")" << std::endl;
-          }
+          $$ = new yasa::Instruction(*$1, yasa::Indexed_Y, snespos);
 
-          auto mode = size == 1 ? yasa::Direct_Y : yasa::Absolute_Y;
-          $$ = new yasa::Instruction(*$1, mode, snespos);
-          $$->add($2);
+          if (util::isnum(*$2))
+          {
+            $$->add(*$2);
+          }
+          else
+          {
+            $$->defer(*$2);
+          }
         }
       };
 
 indirect_indexed:
-        instr T_LPAREN number T_COMMA index T_RPAREN {
-          // puts("Indirect Indexed");
-          if ($3->value() > 0xFF)
-          {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            YYABORT;
-          }
-
+        instr T_LPAREN math T_COMMA index T_RPAREN {
           $$ = new yasa::Instruction(*$1, *$5 == "X" ? yasa::Indirect_X : yasa::Indirect_Y, snespos);
-          $$->add($3);
-        }
-      | instr T_LPAREN number T_RPAREN T_COMMA index {
-          // puts("Indirect Indexed");
-          if ($3->value() > 0xFF)
+
+          if (util::isnum(*$3))
           {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            YYABORT;
+            $$->add(*$3);
           }
-
-
+          else
+          {
+            $$->defer(*$3);
+          }
+        }
+      | instr T_LPAREN math T_RPAREN T_COMMA index {
+          puts("Indirect Indexed");
           if (*$6 == "Y")
           {
             $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, snespos);
-            $$->add($3);
+
+            if (util::isnum(*$3))
+            {
+              $$->add(*$3);
+            }
+            else
+            {
+              $$->defer(*$3);
+            }
           }
           else
           {
@@ -291,32 +341,37 @@ indirect_indexed:
       ;
 
 stack_relative:
-      instr number T_COMMA stack {
-        // puts("Stack Relative");
-        if ($2->value() > 0xFF)
-        {
-          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($2->value()) << ") line " << yylineno << std::endl;
-          YYABORT;
-        }
-
+      instr math T_COMMA stack {
+        puts("Stack Relative");
         $$ = new yasa::Instruction(*$1, yasa::Stack, snespos);
-        $$->add($2);
+
+        if (util::isnum(*$2))
+        {
+          $$->add(*$2);
+        }
+        else
+        {
+          $$->defer(*$2);
+        }
       }
       ;
 
 stack_relative_indirect:
-      instr T_LPAREN number T_COMMA stack T_RPAREN T_COMMA index {
-        // puts("Stack Relative Indirect");
-        if ($3->value() > 0xFF)
-        {
-          std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-          YYABORT;
-        }
+      instr T_LPAREN math T_COMMA stack T_RPAREN T_COMMA index {
+        puts("Stack Relative Indirect");
 
         if (*$8 == "Y")
         {
           $$ = new yasa::Instruction(*$1, yasa::Stack_Y, snespos);
-          $$->add($3);
+
+          if (util::isnum(*$3))
+          {
+            $$->add(*$3);
+          }
+          else
+          {
+            $$->defer(*$3);
+          }
         }
         else
         {
@@ -328,37 +383,42 @@ stack_relative_indirect:
 
 accumulator:
       instr accum {
-        // puts("Accumulator");
+        puts("Accumulator");
 
-        $$ = new yasa::Instruction(*$1, yasa::Accumulator, snespos);
+        $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
       }
       ;
 
 indirect_long:
-        instr T_LBRACKET number T_RBRACKET {
-          // puts("Indirect Long");
-
-          if ($3->value() > 0xFF)
-          {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            YYABORT;
-          }
+        instr T_LBRACKET math T_RBRACKET {
+          puts("Indirect Long");
 
           $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, snespos);
-          $$->add($3);
-        }
-      | instr T_LBRACKET number T_RBRACKET T_COMMA index {
-          // puts("Indirect Long");
-          if ($3->value() > 0xFF)
+          
+          if (util::isnum(*$3))
           {
-            std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-            YYABORT;
+            $$->add(*$3);
           }
+          else
+          {
+            $$->defer(*$3);
+          }
+        }
+      | instr T_LBRACKET math T_RBRACKET T_COMMA index {
+          puts("Indirect Long");
 
           if (*$6 == "Y")
           {
             $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, snespos);
-            $$->add($3);
+
+            if (util::isnum(*$3))
+            {
+              $$->add(*$3);
+            }
+            else
+            {
+              $$->defer(*$3);
+            }
           }
           else
           {
@@ -370,41 +430,61 @@ indirect_long:
       ;
 
 block:
-      instr number T_COMMA number {
-        // puts("Block");
-
-        if ($2->value() > 0xFF || $4->value() > 0xFF)
-        {
-          std::cout << "Error: parameter for block bigger than allowed size of 1 byte. (line " << yylineno << ")" << std::endl;
-          YYABORT;
-        }
+      instr math T_COMMA math {
+        puts("Block");
 
         $$ = new yasa::Instruction(*$1, yasa::Block, snespos);
-        $$->add($2);
-        $$->add($4);
+
+        if (util::isnum(*$2))
+        {
+          $$->add(*$2);
+        }
+        else
+        {
+          $$->defer(*$2);
+        }
+
+        if (util::isnum(*$4))
+        {
+          $$->add(*$4);
+        }
+        else
+        {
+          $$->defer(*$4);
+        }
       };
 
-number: number T_PLUS number    { $$ = new yasa::Integer(*$1 + *$3); }
-      | number T_MINUS number   { $$ = new yasa::Integer(*$1 - *$3); }
-      | number T_MULT number    { $$ = new yasa::Integer(*$1 * *$3); }
-      | number T_DIV number     { $$ = new yasa::Integer(*$1 / *$3); }
-      | number T_MOD number     { $$ = new yasa::Integer(*$1 % *$3); }
-      | number T_LOGAND number  { $$ = new yasa::Integer(*$1 & *$3); }
-      | number T_LOGOR number   { $$ = new yasa::Integer(*$1 | *$3); }
-      | number T_LOGXOR number  { $$ = new yasa::Integer(*$1 ^ *$3); }
-      | number T_RSHIFT number  { $$ = new yasa::Integer(*$1 >> *$3); }
-      | number T_LSHIFT number  { $$ = new yasa::Integer(*$1 << *$3); }
-      // | label T_PLUS number     { $$ = new yasa::Integer(*$1 + *$3); }
-      // | label T_MINUS number    { $$ = new yasa::Integer(*$1 - *$3); }
-      // | label T_MULT number     { $$ = new yasa::Integer(*$1 * *$3); }
-      // | label T_DIV number      { $$ = new yasa::Integer(*$1 / *$3); }
-      // | label T_MOD number      { $$ = new yasa::Integer(*$1 % *$3); }
-      // | label T_LOGAND number   { $$ = new yasa::Integer(*$1 & *$3); }
-      // | label T_LOGOR number    { $$ = new yasa::Integer(*$1 | *$3); }
-      // | label T_LOGXOR number   { $$ = new yasa::Integer(*$1 ^ *$3); }
-      // | label T_RSHIFT number   { $$ = new yasa::Integer(*$1 >> *$3); }
-      // | label T_LSHIFT number   { $$ = new yasa::Integer(*$1 << *$3); }
-      | T_HEX                   { $$ = new yasa::Integer(yytext + 1, 16); }
+math:   math T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
+      | math T_MINUS math       { $$ = new std::string(*$1 + "-"  + *$3); }
+      | math T_MULT math        { $$ = new std::string(*$1 + "*"  + *$3); }
+      | math T_DIV math         { $$ = new std::string(*$1 + "/"  + *$3); }
+      | math T_MOD math         { $$ = new std::string(*$1 + "%"  + *$3); }
+      | math T_LOGAND math      { $$ = new std::string(*$1 + "&"  + *$3); }
+      | math T_LOGOR math       { $$ = new std::string(*$1 + "|"  + *$3); }
+      | math T_LOGXOR math      { $$ = new std::string(*$1 + "^"  + *$3); }
+      | math T_RSHIFT math      { $$ = new std::string(*$1 + ">>" + *$3); }
+      | math T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
+      //| T_LPAREN math T_RPAREN  { $$ = $2; }
+      | number                  { $$ = new std::string(util::to_string<int>(*$1)); }
+      | label                   { $$ = new std::string(yytext); }
+      ;
+
+immmath:immmath T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
+      | immmath T_MINUS math       { $$ = new std::string(*$1 + "-"  + *$3); }
+      | immmath T_MULT math        { $$ = new std::string(*$1 + "*"  + *$3); }
+      | immmath T_DIV math         { $$ = new std::string(*$1 + "/"  + *$3); }
+      | immmath T_MOD math         { $$ = new std::string(*$1 + "%"  + *$3); }
+      | immmath T_LOGAND math      { $$ = new std::string(*$1 + "&"  + *$3); }
+      | immmath T_LOGOR math       { $$ = new std::string(*$1 + "|"  + *$3); }
+      | immmath T_LOGXOR math      { $$ = new std::string(*$1 + "^"  + *$3); }
+      | immmath T_RSHIFT math      { $$ = new std::string(*$1 + ">>" + *$3); }
+      | immmath T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
+      | T_LPAREN immmath T_RPAREN  { $$ = $2; }
+      | immnum                     { $$ = new std::string(util::to_string<int>(*$1)); }
+      | T_IMMLABEL                 { $$ = new std::string(yytext); }
+      ;
+
+number: T_HEX                   { $$ = new yasa::Integer(yytext + 1, 16); }
       | T_ORD                   { $$ = new yasa::Integer(yytext + 0, 10); }
       | T_BIN                   { $$ = new yasa::Integer(yytext + 1, 2);  }
       ;
@@ -479,6 +559,9 @@ label:  T_SUBLABEL  {
           label_ids.clear();
           label_ids.push_back(*$$);
         }
+      | T_IDENT {
+        $$ = new std::string(yytext);
+      }
       ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }
@@ -574,3 +657,28 @@ instr:  T_ADC         { $$ = new std::string("ADC"); }
       | T_XCE         { $$ = new std::string("XCE"); }
       ;
 %%
+
+std::vector<uint8_t> get_result()
+{
+  std::vector<uint8_t> output;
+
+  std::cout << " Max address: " << max_address << std::endl;
+
+  output.resize(max_address);
+
+  int total = instructions->size();
+  int offset = 0;
+
+  for (int i = 0; i < total; i++)
+  {
+    auto data = (*instructions)[i].data();
+    int addr = (*instructions)[i].address() - offset;
+
+    for (int i = 0; i < data.size(); i++)
+    {
+      output[addr + i] = data[i];
+    }
+  }
+
+  return output;
+}

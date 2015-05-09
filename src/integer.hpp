@@ -14,7 +14,6 @@ namespace yasa
       m_value = strtol(str, NULL, base);
       m_bytes = strlen(str) / 2 + strlen(str) % 2;
       m_realbytes = m_value == 0 ? 1 : (std::log2(m_value) / 8) + 1;
-      std::cout << "Integer value: " << m_value << std::endl;
     }
 
     Integer(int value, int bytes = 0, int real = 0)
@@ -29,8 +28,6 @@ namespace yasa
 
       m_bytes = bytes;
       m_realbytes = real;
-
-      std::cout << "Integer value: " << m_value << std::endl;
     }
 
     operator int()

@@ -1,6 +1,7 @@
 #include "test.hpp"
 
 #include <iomanip>
+#include <fstream>
 
 namespace test
 {
@@ -28,23 +29,24 @@ namespace test
       return false;
     }
 
-    for (auto &instr : *output)
+    std::vector<uint8_t> parseout = get_result();
+
+    std::ofstream ofs(name + ".out");
+
+    int index = 0;
+    for (auto byte : parseout)
     {
-      if (instr.has_label())
+      index++;
+
+      if (index % 16 == 0)
       {
-        instr.parse_label(labels[instr.label()]);
+        std::cout << std::endl;
       }
+
+      ofs << std::setw(2) << static_cast<int>(byte) << " ";
     }
 
-    std::vector<uint8_t> parseout;
-
-    for (auto instr : *output)
-    {
-      for (auto byte : instr.data())
-      {
-        parseout.push_back(byte);
-      }
-    }
+    ofs.close();
 
     if (parseout.size() != expected.size())
     {

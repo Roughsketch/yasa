@@ -12,7 +12,6 @@ extern FILE *yyin;
 extern void scan_string(const std::string& str);
 extern void set_base_path(const std::string& path);
 
-extern std::vector<yasa::Instruction> *output;
-extern std::map<std::string, int> labels;
+extern std::vector<uint8_t> get_result();
 
 #endif

@@ -23,11 +23,10 @@ namespace yasa
 
     Instruction& add(Integer *n);
     Instruction& add(int n, int size);
-    Instruction& set_label(std::string label);
+    Instruction& add(std::string str);
+    Instruction& defer(std::string& expression);
 
-    bool has_label();
-    void parse_label(int label_addr);
-    std::string label();
+    bool parsed();
 
     std::vector<uint8_t> data();
     int size();
@@ -37,10 +36,15 @@ namespace yasa
     AddressMode mode();
   private:
     std::vector<uint8_t> m_data;
+    std::vector<int> m_params;
     int m_address;
-    std::string m_label;
+    bool m_parsed;
+    bool m_setsize;
+    std::string m_expr;
     std::string m_name;
     AddressMode m_mode;
+    int m_size;
+    uint8_t m_opcode;
   };
 }
 
