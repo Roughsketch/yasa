@@ -81,11 +81,11 @@ namespace yasa
     if (m_parsed == false)
     {
       bool success;
-      data.clear();
+      m_data.clear();
 
       m_opcode = get_byte(m_name, m_mode, m_size, success);
 
-      data.push_back(m_opcode);
+      m_data.push_back(m_opcode);
 
       if (m_params.size() == 1)
       {
