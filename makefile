@@ -1,7 +1,8 @@
-CC=g++
-CXXFLAGS+=-c -std=c++11 -U__STRICT_ANSI__
-CXXFLAGS+=-DDEBUG_TEST
-CXXFLAGS+=-DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
+CXX=g++
+CXXFLAGS+=-std=c++11 -U__STRICT_ANSI__
+LDFLAGS+=
+FLEX=win_flex.exe
+BISON=win_bison.exe
 FLEXBISONSRCS=src/parser.cpp src/tokens.cpp src/math_parser.cpp src/math_tokens.cpp
 SRCS=$(FLEXBISONSRCS) src/main.cpp src/assembler.cpp src/instruction.cpp src/util.cpp src/test.cpp
 OBJS=$(SRCS:.cpp=.o)
@@ -9,19 +10,23 @@ EXE=bin/yasa
 
 all: flex bison $(SRCS) $(EXE)
 
+debug: CXXFLAGS+=-DDEBUG_TEST
+debug: CXXFLAGS+=-DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
+debug: flex bison $(SRCS) $(EXE)
+
 $(EXE): $(OBJS)
-	$(CC) $(OBJS) -o $@
+	$(CXX) $(LDFLAGS) $(OBJS) -o $@
 
 .c.o:
-	$(CC) $(CXXFLAGS) $< -o $@
+	$(CXX) $(CXXFLAGS) $< -o $@
 
 flex:
-	win_flex.exe -o src/tokens.cpp src/65c816.l
-	win_flex.exe -o src/math_tokens.cpp src/math.l
+	$(FLEX) -o src/tokens.cpp src/65c816.l
+	$(FLEX) -o src/math_tokens.cpp src/math.l
 
 bison:
-	win_bison.exe -d -v -o src/parser.cpp src/65c816.y
-	win_bison.exe -d -o src/math_parser.cpp src/math.y
+	$(BISON) -d -o src/parser.cpp src/65c816.y
+	$(BISON) -d -o src/math_parser.cpp src/math.y
 
 rebuild: clean all
 
