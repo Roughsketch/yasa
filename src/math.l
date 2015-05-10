@@ -41,5 +41,13 @@ $[0-9a-fA-F]+                   puts("T_HEX"); SAVE_TOKEN; return TOKEN(T_HEX);
 !                               puts("T_LOGNOT"); return TOKEN(T_LOGNOT);
 =                               puts("T_EQUAL"); return TOKEN(T_EQUAL);
 ;                               puts("T_END"); return TOKEN(T_END);
-.                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
+.                               printf("Unknown token! %s %d\n", mathtext, mathlineno); yyterminate();
 %%
+
+void math_parse_expr(const std::string& str)
+{
+  std::string scan = str + ";";
+
+  math_switch_to_buffer(math_scan_string(scan.c_str()));
+  mathlineno = 1;
+}
