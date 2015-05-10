@@ -7,6 +7,7 @@ extern int mathlex();
 extern char *mathtext;
 extern FILE *mathin;
 
-extern yasa::Integer *math_output;
+extern void math_parse_expr(const std::string& str);
+extern int math_result();
 
 #endif
