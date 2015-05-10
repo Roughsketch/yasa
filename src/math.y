@@ -16,7 +16,7 @@
   extern char * mathtext;
   extern int mathlineno;
 
-  yasa::Integer *math_output;
+  int math_output;
 
   void matherror(std::map<std::string, int>& t, const char *s) {
     std::cout << "ERROR: " << s << " (line " << mathlineno << ")" << std::endl;
@@ -61,7 +61,7 @@
 
 %%
 
-value:  math T_END              { std::cout << "Value: " << $1 << std::endl; math_output = new yasa::Integer($1); exit(0); }
+value:  math T_END              { math_output = $1; }
       ;
 
 bare:   T_HEX                   { $$ = strtol(mathtext + 1, NULL, 16); }
@@ -98,3 +98,8 @@ math:   math T_PLUS math        { $$ = $1 + $3; }
       | number
       ;
 %%
+
+int math_result()
+{
+  return math_output;
+}
