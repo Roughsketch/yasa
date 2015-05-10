@@ -43,6 +43,7 @@ namespace yasa
   }
 
   uint8_t get_byte(std::string instr, AddressMode &mode, int size);
+  uint8_t get_avg_size(std::string instr, AddressMode &mode);
 }
 
 #endif

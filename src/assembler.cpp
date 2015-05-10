@@ -236,4 +236,17 @@ namespace yasa
 
     throw InvalidInstructionException("Invalid instruction found: " + instr + " with size " + util::to_string(size) + " and mode " + modes[mode]);
   }
+
+  uint8_t get_avg_size(std::string instr, AddressMode& mode)
+  {
+    auto sizes = detail::ByteTable[instr][mode];
+    int sum = 0;
+
+    for (auto map : sizes)
+    {
+      sum += map.first; // Add size
+    }
+
+    return sum / sizes.size();
+  }
 }
