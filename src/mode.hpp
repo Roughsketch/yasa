@@ -3,7 +3,8 @@
 
 namespace yasa
 {
-  enum AddressMode {
+  enum AddressMode 
+  {
     Immediate,
     Implied,
     Direct,
