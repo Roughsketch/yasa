@@ -26,7 +26,16 @@ int main(int argc, char *argv[])
   else if (std::string(argv[1]) == "-m")
   {
     std::map<std::string, int> temp;
-    mathparse(temp);
+
+    while (true)
+    {
+      int result = mathparse(temp); 
+
+      if (result == 0)
+      {
+        std::cout << "Value: " << math_result() << std::endl; 
+      }
+    }
   }
   else if (std::string(argv[1]) == "-n")
   {

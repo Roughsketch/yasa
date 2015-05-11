@@ -61,7 +61,7 @@
 
 %%
 
-value:  math T_END              { math_output = $1; }
+value:  math T_END              { math_output = $1; YYACCEPT; }
       ;
 
 bare:   T_HEX                   { $$ = strtol(mathtext + 1, NULL, 16); }
