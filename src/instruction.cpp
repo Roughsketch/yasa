@@ -12,7 +12,14 @@ namespace yasa
 
     if (m_mode == Implied)
     {
-      m_opcode = get_byte(instr, mode, 1);
+      try
+      {
+        m_opcode = get_byte(instr, mode, 1);
+      }
+      catch(InvalidInstructionException e)
+      {
+        m_opcode = get_byte(instr, mode, 2);
+      }
     }
 
 
@@ -34,55 +41,45 @@ namespace yasa
           throw InvalidInstructionException("Invalid size modifier: " + instr);
       }
     }
-  }
-
-  Instruction& Instruction::add(Integer *n)
-  {
-    m_parsed = false;
-    m_params.push_back(n->value());
-    m_size += n->size();
-
-    return *this;
+    else
+    {
+      m_size = get_avg_size(instr, mode);
+    }
   }
 
   Instruction& Instruction::add(std::string str)
   {
     m_parsed = false;
-    int n = strtol(str.c_str(), NULL, 10);
-    m_params.push_back(n);
-    m_size += n == 0 ? 1 : (std::log2(n) / 8) + 1;
+    m_params.push_back(str);
 
     return *this;
-  }
-
-  Instruction& Instruction::add(int n, int size = 1)
-  {
-    m_parsed = false;
-    m_params.push_back(n);
-    m_size += size;
-
-    return *this;
-  }
-
-  Instruction& Instruction::defer(std::string& expression)
-  {
-    m_parsed = false;
-    m_expr = expression;
-  }
-
-  bool Instruction::parsed()
-  {
-    return m_parsed;
   }
 
   std::vector<uint8_t> Instruction::data()
   {
     if (m_parsed == false)
     {
-      bool success;
       m_data.clear();
 
-      m_opcode = get_byte(m_name, m_mode, m_size, success);
+      auto labels = get_labels();
+
+      math_parse_expr(m_params[0]);
+      
+      int result = mathparse(labels);
+
+      if (result != 0)
+      {
+        throw InvalidInstructionException("Could not parse expression: " + m_params[0]);
+      }
+
+      int value = math_result();
+
+      if (util::bytesize(value) != m_size - 1)
+      {
+
+      }
+
+      m_opcode = get_byte(m_name, m_mode, m_size);
 
       m_data.push_back(m_opcode);
 
@@ -90,16 +87,21 @@ namespace yasa
       {
         for (int i = 0; i < m_size - 1; i++)
         {
-          m_data.push_back((m_params[0] >> (i * 8)) & 0xFF);
+          //m_data.push_back((m_params[0] >> (i * 8)) & 0xFF);
         }
       }
       else
       {
-        m_data.push_back(m_params[0]);
-        m_data.push_back(m_params[1]);
+        //m_data.push_back(m_params[0]);
+        //m_data.push_back(m_params[1]);
       }
     }
     return m_data;
+  }
+
+  bool Instruction::parsed()
+  {
+    return m_parsed;
   }
 
   int Instruction::size()

@@ -8,6 +8,7 @@
 #include "mode.hpp"
 #include "integer.hpp"
 #include "assembler.hpp"
+#include "externs.hpp"
 
 namespace yasa
 {
@@ -35,12 +36,13 @@ namespace yasa
     std::string name();
     AddressMode mode();
   private:
+    std::vector<std::string> m_params;
     std::vector<uint8_t> m_data;
-    std::vector<int> m_params;
+
     int m_address;
     bool m_parsed;
     bool m_setsize;
-    std::string m_expr;
+
     std::string m_name;
     AddressMode m_mode;
     int m_size;

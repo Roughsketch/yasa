@@ -29,11 +29,58 @@
   auto *instructions = new std::vector<yasa::Instruction>();
 
   std::vector<std::string> label_ids;
+  std::map<std::string, std::string> sublabels;
   std::map<std::string, int> labels;
 
 
   void yyerror(const char *s) {
     printf("ERROR: %s (line %d)\n", s, yylineno); 
+  }
+
+
+  std::string *add_sublabel_name(const char *text)
+  {
+    std::string sublabel = "";
+    std::string id = std::string(text);
+    int i;
+
+    while (id[i] == '.')
+    {
+      if (i > label_ids.size())
+      {
+        std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
+        YYERROR;
+      }
+
+      sublabel += label_ids[i] + "_";
+      i++;
+    }
+
+    id = id.substr(i);
+
+    //  Sublabel was dedented
+    if (i != label_ids.size())
+    {
+      label_ids.erase(label_ids.begin() + i, label_ids.end());
+      label_ids.push_back(id);
+    }
+
+    $$ = new std::string(sublabel + id);
+    label_ids.push_back(id);
+    sublabels[id] = sublabel + id;
+  }
+
+  std::string *get_sublabel_name(const char *text)
+  {
+    std::string id = std::string(text);
+
+    if (sublabels.count(id) == 1)
+    {
+      return sublabels[id];
+    }
+
+    std::cout << "Error: sublabel used but not defined. " << std::endl;
+    YYERROR;
   }
 %}
 
@@ -78,6 +125,8 @@
 %left T_MULT T_DIV T_MOD
 %left T_LOGNOT
 
+%right T_LPAREN T_RPAREN
+
 %union {
     std::string *string;
     std::vector<uint8_t> *vector;
@@ -108,6 +157,12 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
           std::cout << "Label: " << yytext << std::endl;
           $$ = $1;
 
+          if (labels.count(*$2) == 1)
+          {
+            std::cout << "Error: label '" << *$2 << "' redefined on line " << yylineno << std::endl;
+            YYERROR;
+          }
+
           labels[*$2] = snespos;
 
           if (max_address < snespos)
@@ -123,15 +178,14 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
       | input define T_EQUAL number { 
           $$ = $1;
 
-          std::cout << "Got here" << std::endl;
-          std::cout << *$2 << " = " << *$4 << std::endl;
+          std::cout << "Define: " << *$2 << " = " << *$4 << std::endl;
         }
       ;
 
 line:   expr {
           $$ = new std::vector<yasa::Instruction>();
-          $$->push_back(*$1); snespos += $1->size();
-          std::cout << "Expr size: " << $1->size() << std::endl;
+          $$->push_back(*$1);
+          snespos += $1->size();
         }
       | expr T_SEPARATOR expr T_LINE {
           $$ = new std::vector<yasa::Instruction>();
@@ -168,9 +222,9 @@ expr:   implied
 
 implied: 
         instr T_LINE {
-          puts("Implied");
+          // puts("Implied");
           $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
-          puts("Implied Done");
+          // puts("Implied Done");
 
           //  If op was an implied BRK or COP, then push back another 0
           switch ($$->opcode())
@@ -181,12 +235,12 @@ implied:
               $$->add("0");
               break;
           }
-          puts("Implied Done");
+          // puts("Implied Done");
         }
       | instr T_SEPARATOR {
-          puts("Implied");
+          // puts("Implied");
           $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
-          puts("Implied Done");
+          // puts("Implied Done");
 
           //  If op was an implied BRK or COP, then push back another 0
           switch ($$->opcode())
@@ -197,193 +251,121 @@ implied:
               $$->add("0");
               break;
           }
-          puts("Implied Done");
+          // puts("Implied Done");
         }
       ;
 
 immediate:
       instr immmath { 
-        puts("Immediate");
+        // puts("Immediate");
 
         $$ = new yasa::Instruction(*$1, yasa::Immediate, snespos);
-
-        if (util::isnum(*$2))
-        {
-          $$->add(*$2); 
-        }
-        else
-        {
-          $$->defer(*$2);
-        }
+        $$->add(*$2); 
       };
 
 direct:
       instr math { 
         std::cout << "Direct: " << *$2 << std::endl;
-        puts("Direct");
+        // puts("Direct");
         // int value = $2->value();
         // int size = $2->size();
 
         // if ($2->size() > 3)
         // {
         //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-        //   YYABORT;
+        //   YYERROR;
         // }
 
         $$ = new yasa::Instruction(*$1, yasa::Direct, snespos);
-
-        if (util::isnum(*$2))
-        {
-          $$->add(*$2); 
-        }
-        else
-        {
-          $$->defer(*$2);
-        }
+        $$->add(*$2); 
       };
 
 indirect:
       instr T_LPAREN math T_RPAREN { 
-        puts("Indirect");
+        // puts("Indirect");
         // if ($3->value() > 0xFFFF)
         // {
         //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-        //   YYABORT;
+        //   YYERROR;
         // }
 
         $$ = new yasa::Instruction(*$1, yasa::Indirect, snespos);
-
-        if (util::isnum(*$3))
-        {
-          $$->add(*$3);
-        }
-        else
-        {
-          $$->defer(*$3);
-        }
+        $$->add(*$3);
       };
 
 indexed:
       instr math T_COMMA index {
-        puts("Indexed");
+        // puts("Indexed");
         // int value = $2->value();
         // int size = $2->size();
 
         // if (value > 0xFFFFFF) 
         // {
         //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-        //   YYABORT;
+        //   YYERROR;
         // }
 
         if (*$4 == "X")
         {
           
           $$ = new yasa::Instruction(*$1, yasa::Indexed_X, snespos);
-
-          if (util::isnum(*$2))
-          {
-            $$->add(*$2); 
-          }
-          else
-          {
-            $$->defer(*$2);
-          }
+          $$->add(*$2); 
         }
         else if (*$4 == "Y")
         {
           $$ = new yasa::Instruction(*$1, yasa::Indexed_Y, snespos);
-
-          if (util::isnum(*$2))
-          {
-            $$->add(*$2);
-          }
-          else
-          {
-            $$->defer(*$2);
-          }
+          $$->add(*$2);
         }
       };
 
 indirect_indexed:
         instr T_LPAREN math T_COMMA index T_RPAREN {
           $$ = new yasa::Instruction(*$1, *$5 == "X" ? yasa::Indirect_X : yasa::Indirect_Y, snespos);
-
-          if (util::isnum(*$3))
+          $$->add(*$3);
+        }
+      | instr T_LPAREN math T_RPAREN T_COMMA index {
+          // puts("Indirect Indexed");
+          if (*$6 == "Y")
           {
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, snespos);
             $$->add(*$3);
           }
           else
           {
-            $$->defer(*$3);
-          }
-        }
-      | instr T_LPAREN math T_RPAREN T_COMMA index {
-          puts("Indirect Indexed");
-          if (*$6 == "Y")
-          {
-            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, snespos);
-
-            if (util::isnum(*$3))
-            {
-              $$->add(*$3);
-            }
-            else
-            {
-              $$->defer(*$3);
-            }
-          }
-          else
-          {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
-            YYABORT;
+            YYERROR;
           }
         }
       ;
 
 stack_relative:
       instr math T_COMMA stack {
-        puts("Stack Relative");
+        // puts("Stack Relative");
         $$ = new yasa::Instruction(*$1, yasa::Stack, snespos);
-
-        if (util::isnum(*$2))
-        {
-          $$->add(*$2);
-        }
-        else
-        {
-          $$->defer(*$2);
-        }
+        $$->add(*$2);
       }
       ;
 
 stack_relative_indirect:
       instr T_LPAREN math T_COMMA stack T_RPAREN T_COMMA index {
-        puts("Stack Relative Indirect");
+        // puts("Stack Relative Indirect");
 
         if (*$8 == "Y")
         {
           $$ = new yasa::Instruction(*$1, yasa::Stack_Y, snespos);
-
-          if (util::isnum(*$3))
-          {
-            $$->add(*$3);
-          }
-          else
-          {
-            $$->defer(*$3);
-          }
+          $$->add(*$3);
         }
         else
         {
           std::cout << "Error: non-Y register used with stack relative indirect indexed mode. (line " << yylineno << ")" << std::endl;
-          YYABORT;
+          YYERROR;
         }
       }
       ;
 
 accumulator:
       instr accum {
-        puts("Accumulator");
+        // puts("Accumulator");
 
         $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
       }
@@ -391,39 +373,23 @@ accumulator:
 
 indirect_long:
         instr T_LBRACKET math T_RBRACKET {
-          puts("Indirect Long");
+          // puts("Indirect Long");
 
           $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, snespos);
-          
-          if (util::isnum(*$3))
-          {
-            $$->add(*$3);
-          }
-          else
-          {
-            $$->defer(*$3);
-          }
+          $$->add(*$3);
         }
       | instr T_LBRACKET math T_RBRACKET T_COMMA index {
-          puts("Indirect Long");
+          // puts("Indirect Long");
 
           if (*$6 == "Y")
           {
             $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, snespos);
-
-            if (util::isnum(*$3))
-            {
-              $$->add(*$3);
-            }
-            else
-            {
-              $$->defer(*$3);
-            }
+            $$->add(*$3);
           }
           else
           {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
-            YYABORT;
+            YYERROR;
           }
 
         }
@@ -431,27 +397,13 @@ indirect_long:
 
 block:
       instr math T_COMMA math {
-        puts("Block");
+        // puts("Block");
 
         $$ = new yasa::Instruction(*$1, yasa::Block, snespos);
 
-        if (util::isnum(*$2))
-        {
-          $$->add(*$2);
-        }
-        else
-        {
-          $$->defer(*$2);
-        }
-
-        if (util::isnum(*$4))
-        {
-          $$->add(*$4);
-        }
-        else
-        {
-          $$->defer(*$4);
-        }
+        
+        $$->add(*$2);
+        $$->add(*$4);
       };
 
 math:   math T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
@@ -466,7 +418,8 @@ math:   math T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
       | math T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
       //| T_LPAREN math T_RPAREN  { $$ = $2; }
       | number                  { $$ = new std::string(util::to_string<int>(*$1)); }
-      | label                   { $$ = new std::string(yytext); }
+      | T_IDENT                 { $$ = new std::string(yytext); }
+      | T_SUBLABEL              { $$ = get_sublabel_name(yytext); }
       ;
 
 immmath:immmath T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
@@ -479,7 +432,7 @@ immmath:immmath T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
       | immmath T_LOGXOR math      { $$ = new std::string(*$1 + "^"  + *$3); }
       | immmath T_RSHIFT math      { $$ = new std::string(*$1 + ">>" + *$3); }
       | immmath T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
-      | T_LPAREN immmath T_RPAREN  { $$ = $2; }
+      //| T_LPAREN immmath T_RPAREN  { $$ = $2; }
       | immnum                     { $$ = new std::string(util::to_string<int>(*$1)); }
       | T_IMMLABEL                 { $$ = new std::string(yytext); }
       ;
@@ -506,7 +459,7 @@ index:  T_INDEX {
           else
           {
             std::cout << "Error: Invalid index register " << yytext << " (line " << yylineno << ")" << std::endl;
-            YYABORT;
+            YYERROR;
           }
         }
       ;
@@ -522,33 +475,7 @@ stack:  T_STACK       { $$ = new std::string("S"); }
       // | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(snespos)); }
       // | 
 label:  T_SUBLABEL  {
-          std::string sublabel = "";
-          std::string id = std::string(yytext);
-          int i;
-
-          while (id[i] == '.')
-          {
-            if (i > label_ids.size())
-            {
-              std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-              YYABORT;
-            }
-
-            sublabel += label_ids[i] + "_";
-            i++;
-          }
-
-          id = id.substr(i);
-
-          //  Sublabel was dedented
-          if (i != label_ids.size())
-          {
-            label_ids.erase(label_ids.begin() + i, label_ids.end());
-            label_ids.push_back(id);
-          }
-
-          $$ = new std::string(sublabel + id);
-          label_ids.push_back(id);
+          $$ = add_sublabel_name(yytext);
         }
       | T_LABEL     {
           //  Get rid of trailing :
@@ -559,9 +486,6 @@ label:  T_SUBLABEL  {
           label_ids.clear();
           label_ids.push_back(*$$);
         }
-      | T_IDENT {
-        $$ = new std::string(yytext);
-      }
       ;
 
 instr:  T_ADC         { $$ = new std::string("ADC"); }
@@ -681,4 +605,9 @@ std::vector<uint8_t> get_result()
   }
 
   return output;
+}
+
+std::map<std::string, int> get_labels()
+{
+  return labels;
 }

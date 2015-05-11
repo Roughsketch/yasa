@@ -13,5 +13,6 @@ extern void scan_string(const std::string& str);
 extern void set_base_path(const std::string& path);
 
 extern std::vector<uint8_t> get_result();
+extern std::map<std::string, int> get_labels();
 
 #endif
