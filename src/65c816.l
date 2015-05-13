@@ -174,14 +174,10 @@
 (?i:s)                          SAVE_TOKEN; return TOKEN(T_STACK);
 [a-zA-Z_][a-zA-Z0-9_]*:         SAVE_TOKEN; return TOKEN(T_LABEL);
 ^\s*\.+[a-zA-Z_][a-zA-Z0-9_]*   SAVE_TOKEN; return TOKEN(T_SUBLABEL);
-#[a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_IMMLABEL);
 (\.+)?[a-zA-Z_][a-zA-Z0-9_]*    SAVE_TOKEN; return TOKEN(T_IDENT);
 $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
-#$[0-9a-fA-F]+                  SAVE_TOKEN; return TOKEN(T_HEXLIT);
 %[01]+                          SAVE_TOKEN; return TOKEN(T_BIN);
-#%[01]+                         SAVE_TOKEN; return TOKEN(T_BINLIT);
-[1-9][0-9]*                     SAVE_TOKEN; return TOKEN(T_ORD);
-#[1-9][0-9]*                    SAVE_TOKEN; return TOKEN(T_ORDLIT);
+[0-9]+                          SAVE_TOKEN; return TOKEN(T_ORD);
 ,                               return TOKEN(T_COMMA);
 :                               return TOKEN(T_SEPARATOR);
 \(                              return TOKEN(T_LPAREN);
@@ -200,6 +196,7 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 \^                              return TOKEN(T_LOGXOR);
 !                               return TOKEN(T_LOGNOT);
 =                               return TOKEN(T_EQUAL);
+#                               return TOKEN(T_HASH);
 .                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
 %%
 
