@@ -17,19 +17,27 @@
   #include "util.hpp"
   #include "assembler.hpp"
 
+  #include "math_externs.hpp"
+
   #define YYDEBUG 1
   extern int yylex();
   extern char * yytext;
   extern int yylineno;
 
-  int snespos = 0;
-  int max_address = 0;
-  int minus_label = 0;  //  Address of last - label
+  struct Assembler
+  {
+    int snespos;
+    int realpos;
+    int max_addr;
+    int org;
 
-  auto *instructions = new std::vector<yasa::Instruction>();
+    std::map<int, std::vector<yasa::Instruction>> ast;
+  };
+
+
+  Assembler assembler;
 
   std::vector<std::string> label_ids;
-  std::map<std::string, std::string> sublabels;
   std::map<std::string, int> labels;
 
 
@@ -42,14 +50,14 @@
   {
     std::string sublabel = "";
     std::string id = std::string(text);
-    int i;
+    int i = 0;
 
     while (id[i] == '.')
     {
       if (i > label_ids.size())
       {
         std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-        YYERROR;
+        return nullptr;
       }
 
       sublabel += label_ids[i] + "_";
@@ -61,37 +69,45 @@
     //  Sublabel was dedented
     if (i != label_ids.size())
     {
+      //  Erase all sublabels deeper than this one
       label_ids.erase(label_ids.begin() + i, label_ids.end());
-      label_ids.push_back(id);
     }
-
-    $$ = new std::string(sublabel + id);
+    
+    //  Push back the new sublabel
     label_ids.push_back(id);
-    sublabels[id] = sublabel + id;
+    return new std::string(sublabel + id);
   }
 
-  std::string *get_sublabel_name(const char *text)
+  std::string get_sublabel_name(const char *text)
   {
+    std::string sublabel = "";
     std::string id = std::string(text);
+    int i = 0;
 
-    if (sublabels.count(id) == 1)
+    while (id[i] == '.')
     {
-      return sublabels[id];
+      if (i > label_ids.size())
+      {
+        std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
+        return nullptr;
+      }
+
+      sublabel += label_ids[i] + "_";
+      i++;
     }
 
-    std::cout << "Error: sublabel used but not defined. " << std::endl;
-    YYERROR;
+    return sublabel + id;
   }
 %}
 
 //  Names / Labels
-%token <string>   T_IDENT T_LABEL T_SUBLABEL T_IMMLABEL
+%token <string>   T_IDENT T_LABEL T_SUBLABEL
 
 //  Symbols
-%token <string>   T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET
+%token <string>   T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_HASH
 
 //  Numbers
-%token <string>   T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT
+%token <string>   T_HEX T_BIN T_ORD
 
 //  Instructions
 %token <string>   T_ADC T_AND T_ASL T_BCC T_BCS T_BEQ T_BIT T_BMI
@@ -138,14 +154,13 @@
 
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block 
-%type <string>      instr index stack accum define label math immmath
-%type <number>      number immnum
+%type <string>      instr index stack accum define label math param number
 //%type <number> number
 
 %start program
 
 %%
-program: input { instructions = new std::vector<yasa::Instruction>(*$1); }
+program: input { } //instructions = new std::vector<yasa::Instruction>(*$1); }
       ;
 
 input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
@@ -163,14 +178,14 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
             YYERROR;
           }
 
-          labels[*$2] = snespos;
+          labels[*$2] = assembler.snespos;
 
-          if (max_address < snespos)
+          if (assembler.max_addr < assembler.snespos)
           {
-            max_address = snespos + 4;  //  Add 4 to make sure it can fit any instruction
+            assembler.max_addr = assembler.snespos + 4;  //  Add 4 to make sure it can fit any instruction
           }
 
-          std::cout << "SNES Addr: " << snespos << " Max Addr: " << max_address << std::endl;
+          std::cout << "SNES Addr: " << assembler.snespos << " Max Addr: " << assembler.max_addr << std::endl;
         }
       | input command { 
           $$ = $1; 
@@ -185,13 +200,17 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
 line:   expr {
           $$ = new std::vector<yasa::Instruction>();
           $$->push_back(*$1);
-          snespos += $1->size();
+
+          assembler.ast[assembler.org].push_back(*$1);
+          assembler.snespos += $1->size();
         }
       | expr T_SEPARATOR expr T_LINE {
           $$ = new std::vector<yasa::Instruction>();
           $$->push_back(*$1); 
           $$->push_back(*$3); 
-          snespos += $1->size() + $3->size();
+          assembler.ast[assembler.org].push_back(*$1);
+          assembler.ast[assembler.org].push_back(*$3);
+          assembler.snespos += $1->size() + $3->size();
         }
       | T_LINE { 
           $$ = new std::vector<yasa::Instruction>();
@@ -203,7 +222,12 @@ define: T_DEFINE { $$ = new std::string(yytext); }
 command:
         T_ORIGIN number {
           std::cout << "Setting origin to " << *$2 << std::endl;
-          snespos = *$2;
+
+          int value = math_parse(*$2);
+
+          assembler.snespos = value;
+          assembler.org = value;
+          std::cout << "Org is now " << assembler.org << std::endl;
         }
       ;
 
@@ -222,51 +246,29 @@ expr:   implied
 
 implied: 
         instr T_LINE {
-          // puts("Implied");
-          $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
-          // puts("Implied Done");
-
-          //  If op was an implied BRK or COP, then push back another 0
-          switch ($$->opcode())
-          {
-            case 0x00:  // BRK
-            case 0x02:  // COP
-            case 0x42:  // WDM
-              $$->add("0");
-              break;
-          }
-          // puts("Implied Done");
+          //puts("Implied");
+          //std::cout << "Line: " << yylineno << std::endl;
+          $$ = new yasa::Instruction(*$1, yasa::Implied, assembler.snespos);
         }
       | instr T_SEPARATOR {
-          // puts("Implied");
-          $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
-          // puts("Implied Done");
-
-          //  If op was an implied BRK or COP, then push back another 0
-          switch ($$->opcode())
-          {
-            case 0x00:  // BRK
-            case 0x02:  // COP
-            case 0x42:  // WDM
-              $$->add("0");
-              break;
-          }
-          // puts("Implied Done");
+          //puts("Implied");
+          //std::cout << "Line: " << yylineno << std::endl;
+          $$ = new yasa::Instruction(*$1, yasa::Implied, assembler.snespos);
         }
       ;
 
 immediate:
-      instr immmath { 
-        // puts("Immediate");
+      instr T_HASH param { 
+        //puts("Immediate");
+        //std::cout << "Line: " << yylineno << std::endl;
 
-        $$ = new yasa::Instruction(*$1, yasa::Immediate, snespos);
-        $$->add(*$2); 
+        $$ = new yasa::Instruction(*$1, yasa::Immediate, assembler.snespos, *$3);
       };
 
 direct:
-      instr math { 
-        std::cout << "Direct: " << *$2 << std::endl;
-        // puts("Direct");
+      instr param { 
+        //puts("Direct");
+        //std::cout << "Line: " << yylineno << std::endl;
         // int value = $2->value();
         // int size = $2->size();
 
@@ -276,26 +278,26 @@ direct:
         //   YYERROR;
         // }
 
-        $$ = new yasa::Instruction(*$1, yasa::Direct, snespos);
-        $$->add(*$2); 
+        $$ = new yasa::Instruction(*$1, yasa::Direct, assembler.snespos, *$2); 
       };
 
 indirect:
-      instr T_LPAREN math T_RPAREN { 
-        // puts("Indirect");
+      instr T_LPAREN param T_RPAREN { 
+        //puts("Indirect");
+        //std::cout << "Line: " << yylineno << std::endl;
         // if ($3->value() > 0xFFFF)
         // {
         //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
         //   YYERROR;
         // }
 
-        $$ = new yasa::Instruction(*$1, yasa::Indirect, snespos);
-        $$->add(*$3);
+        $$ = new yasa::Instruction(*$1, yasa::Indirect, assembler.snespos, *$3);
       };
 
 indexed:
-      instr math T_COMMA index {
-        // puts("Indexed");
+      instr param T_COMMA index {
+        //puts("Indexed");
+        //std::cout << "Line: " << yylineno << std::endl;
         // int value = $2->value();
         // int size = $2->size();
 
@@ -308,27 +310,26 @@ indexed:
         if (*$4 == "X")
         {
           
-          $$ = new yasa::Instruction(*$1, yasa::Indexed_X, snespos);
-          $$->add(*$2); 
+          $$ = new yasa::Instruction(*$1, yasa::Indexed_X, assembler.snespos, *$2); 
         }
         else if (*$4 == "Y")
         {
-          $$ = new yasa::Instruction(*$1, yasa::Indexed_Y, snespos);
-          $$->add(*$2);
+          $$ = new yasa::Instruction(*$1, yasa::Indexed_Y, assembler.snespos, *$2);
         }
       };
 
 indirect_indexed:
-        instr T_LPAREN math T_COMMA index T_RPAREN {
-          $$ = new yasa::Instruction(*$1, *$5 == "X" ? yasa::Indirect_X : yasa::Indirect_Y, snespos);
-          $$->add(*$3);
+        instr T_LPAREN param T_COMMA index T_RPAREN {
+          //puts("Indirect Indexed X");
+          //std::cout << "Line: " << yylineno << std::endl;
+          $$ = new yasa::Instruction(*$1, yasa::Indirect_X, assembler.snespos, *$3);
         }
-      | instr T_LPAREN math T_RPAREN T_COMMA index {
-          // puts("Indirect Indexed");
+      | instr T_LPAREN param T_RPAREN T_COMMA index {
+          //puts("Indirect Indexed Y");
+          //std::cout << "Line: " << yylineno << std::endl;
           if (*$6 == "Y")
           {
-            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, snespos);
-            $$->add(*$3);
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, assembler.snespos, *$3);
           }
           else
           {
@@ -339,21 +340,21 @@ indirect_indexed:
       ;
 
 stack_relative:
-      instr math T_COMMA stack {
-        // puts("Stack Relative");
-        $$ = new yasa::Instruction(*$1, yasa::Stack, snespos);
-        $$->add(*$2);
+      instr param T_COMMA stack {
+        //puts("Stack Relative");
+        //std::cout << "Line: " << yylineno << std::endl;
+        $$ = new yasa::Instruction(*$1, yasa::Stack, assembler.snespos, *$2);
       }
       ;
 
 stack_relative_indirect:
-      instr T_LPAREN math T_COMMA stack T_RPAREN T_COMMA index {
-        // puts("Stack Relative Indirect");
+      instr T_LPAREN param T_COMMA stack T_RPAREN T_COMMA index {
+        //puts("Stack Relative Indirect");
+        //std::cout << "Line: " << yylineno << std::endl;
 
         if (*$8 == "Y")
         {
-          $$ = new yasa::Instruction(*$1, yasa::Stack_Y, snespos);
-          $$->add(*$3);
+          $$ = new yasa::Instruction(*$1, yasa::Stack_Y, assembler.snespos, *$3);
         }
         else
         {
@@ -365,86 +366,66 @@ stack_relative_indirect:
 
 accumulator:
       instr accum {
-        // puts("Accumulator");
+        //puts("Accumulator");
+        //std::cout << "Line: " << yylineno << std::endl;
 
-        $$ = new yasa::Instruction(*$1, yasa::Implied, snespos);
+        $$ = new yasa::Instruction(*$1, yasa::Implied, assembler.snespos);
       }
       ;
 
 indirect_long:
-        instr T_LBRACKET math T_RBRACKET {
-          // puts("Indirect Long");
+        instr T_LBRACKET param T_RBRACKET {
+          //puts("Indirect Long");
+          //std::cout << "Line: " << yylineno << std::endl;
 
-          $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, snespos);
-          $$->add(*$3);
+          $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, assembler.snespos, *$3);
         }
-      | instr T_LBRACKET math T_RBRACKET T_COMMA index {
-          // puts("Indirect Long");
+      | instr T_LBRACKET param T_RBRACKET T_COMMA index {
+          //puts("Indirect Long");
+          //std::cout << "Line: " << yylineno << std::endl;
 
           if (*$6 == "Y")
           {
-            $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, snespos);
-            $$->add(*$3);
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, assembler.snespos, *$3);
           }
           else
           {
             std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
             YYERROR;
           }
-
         }
       ;
 
 block:
-      instr math T_COMMA math {
-        // puts("Block");
+      instr param T_COMMA param {
+        //puts("Block");
+        //std::cout << "Line: " << yylineno << std::endl;
 
-        $$ = new yasa::Instruction(*$1, yasa::Block, snespos);
-
-        
-        $$->add(*$2);
-        $$->add(*$4);
+        $$ = new yasa::Instruction(*$1, yasa::Block, assembler.snespos, *$2, *$4);
       };
 
-math:   math T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
-      | math T_MINUS math       { $$ = new std::string(*$1 + "-"  + *$3); }
-      | math T_MULT math        { $$ = new std::string(*$1 + "*"  + *$3); }
-      | math T_DIV math         { $$ = new std::string(*$1 + "/"  + *$3); }
-      | math T_MOD math         { $$ = new std::string(*$1 + "%"  + *$3); }
-      | math T_LOGAND math      { $$ = new std::string(*$1 + "&"  + *$3); }
-      | math T_LOGOR math       { $$ = new std::string(*$1 + "|"  + *$3); }
-      | math T_LOGXOR math      { $$ = new std::string(*$1 + "^"  + *$3); }
-      | math T_RSHIFT math      { $$ = new std::string(*$1 + ">>" + *$3); }
-      | math T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
-      //| T_LPAREN math T_RPAREN  { $$ = $2; }
-      | number                  { $$ = new std::string(util::to_string<int>(*$1)); }
-      | T_IDENT                 { $$ = new std::string(yytext); }
-      | T_SUBLABEL              { $$ = get_sublabel_name(yytext); }
+param:  param math param  { $$ = new std::string(*$1 + *$2 + *$3); }
+      | number            { $$ = $1; }
+      | T_IDENT           { $$ = new std::string(yytext); }
+      | T_SUBLABEL        { $$ = new std::string(get_sublabel_name(yytext)); }
       ;
 
-immmath:immmath T_PLUS math        { $$ = new std::string(*$1 + "+"  + *$3); }
-      | immmath T_MINUS math       { $$ = new std::string(*$1 + "-"  + *$3); }
-      | immmath T_MULT math        { $$ = new std::string(*$1 + "*"  + *$3); }
-      | immmath T_DIV math         { $$ = new std::string(*$1 + "/"  + *$3); }
-      | immmath T_MOD math         { $$ = new std::string(*$1 + "%"  + *$3); }
-      | immmath T_LOGAND math      { $$ = new std::string(*$1 + "&"  + *$3); }
-      | immmath T_LOGOR math       { $$ = new std::string(*$1 + "|"  + *$3); }
-      | immmath T_LOGXOR math      { $$ = new std::string(*$1 + "^"  + *$3); }
-      | immmath T_RSHIFT math      { $$ = new std::string(*$1 + ">>" + *$3); }
-      | immmath T_LSHIFT math      { $$ = new std::string(*$1 + "<<" + *$3); }
-      //| T_LPAREN immmath T_RPAREN  { $$ = $2; }
-      | immnum                     { $$ = new std::string(util::to_string<int>(*$1)); }
-      | T_IMMLABEL                 { $$ = new std::string(yytext); }
+math:   T_PLUS        { $$ = new std::string("+");  }
+      | T_MINUS       { $$ = new std::string("-");  }
+      | T_MULT        { $$ = new std::string("*");  }
+      | T_DIV         { $$ = new std::string("/");  }
+      | T_MOD         { $$ = new std::string("%");  }
+      | T_LOGAND      { $$ = new std::string("&");  }
+      | T_LOGOR       { $$ = new std::string("|");  }
+      | T_LOGXOR      { $$ = new std::string("^");  }
+      | T_RSHIFT      { $$ = new std::string(">>"); }
+      | T_LSHIFT      { $$ = new std::string("<<"); }
+      //| T_LPAREN math T_RPAREN  { $$ = $2; }      //  Can't do since it conflicts with indirect commands
       ;
 
-number: T_HEX                   { $$ = new yasa::Integer(yytext + 1, 16); }
-      | T_ORD                   { $$ = new yasa::Integer(yytext + 0, 10); }
-      | T_BIN                   { $$ = new yasa::Integer(yytext + 1, 2);  }
-      ;
-
-immnum: T_HEXLIT                { $$ = new yasa::Integer(yytext + 2, 16);  }
-      | T_ORDLIT                { $$ = new yasa::Integer(yytext + 1, 10);  }
-      | T_BINLIT                { $$ = new yasa::Integer(yytext + 2, 2);   }
+number: T_HEX         { $$ = new std::string(yytext); }
+      | T_ORD         { $$ = new std::string(yytext); }
+      | T_BIN         { $$ = new std::string(yytext); }
       ;
 
 index:  T_INDEX {
@@ -471,8 +452,8 @@ stack:  T_STACK       { $$ = new std::string("S"); }
       ;
 
 
-      //   T_PLUS        { $$ = new std::string("CODE_" + util::to_string(snespos)); }
-      // | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(snespos)); }
+      //   T_PLUS        { $$ = new std::string("CODE_" + util::to_string(assembler.snespos)); }
+      // | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(assembler.snespos)); }
       // | 
 label:  T_SUBLABEL  {
           $$ = add_sublabel_name(yytext);
@@ -481,6 +462,7 @@ label:  T_SUBLABEL  {
           //  Get rid of trailing :
           std::string temp = std::string(yytext);
 
+          //  Remove trailing :
           $$ = new std::string(temp.substr(0, temp.size() - 1));
 
           label_ids.clear();
@@ -488,107 +470,137 @@ label:  T_SUBLABEL  {
         }
       ;
 
-instr:  T_ADC         { $$ = new std::string("ADC"); }
-      | T_AND         { $$ = new std::string("AND"); }
-      | T_ASL         { $$ = new std::string("ASL"); }
-      | T_BCC         { $$ = new std::string("BCC"); }
-      | T_BCS         { $$ = new std::string("BCS"); }
-      | T_BEQ         { $$ = new std::string("BEQ"); }
-      | T_BIT         { $$ = new std::string("BIT"); }
-      | T_BMI         { $$ = new std::string("BMI"); }
-      | T_BNE         { $$ = new std::string("BNE"); }
-      | T_BPL         { $$ = new std::string("BPL"); }
-      | T_BRA         { $$ = new std::string("BRA"); }
-      | T_BRK         { $$ = new std::string("BRK"); }
-      | T_BRL         { $$ = new std::string("BRL"); }
-      | T_BVC         { $$ = new std::string("BVC"); }
-      | T_BVS         { $$ = new std::string("BVS"); }
-      | T_CLC         { $$ = new std::string("CLC"); }
-      | T_CLD         { $$ = new std::string("CLD"); }
-      | T_CLI         { $$ = new std::string("CLI"); }
-      | T_CLV         { $$ = new std::string("CLV"); }
-      | T_CMP         { $$ = new std::string("CMP"); }
-      | T_COP         { $$ = new std::string("COP"); }
-      | T_CPX         { $$ = new std::string("CPX"); }
-      | T_CPY         { $$ = new std::string("CPY"); }
-      | T_DEC         { $$ = new std::string("DEC"); }
-      | T_DEX         { $$ = new std::string("DEX"); }
-      | T_DEY         { $$ = new std::string("DEY"); }
-      | T_EOR         { $$ = new std::string("EOR"); }
-      | T_INC         { $$ = new std::string("INC"); }
-      | T_INX         { $$ = new std::string("INX"); }
-      | T_INY         { $$ = new std::string("INY"); }
-      | T_JML         { $$ = new std::string("JMP"); }
-      | T_JMP         { $$ = new std::string("JMP"); }
-      | T_JSR         { $$ = new std::string("JSR"); }
-      | T_LDA         { $$ = new std::string("LDA"); }
-      | T_LDX         { $$ = new std::string("LDX"); }
-      | T_LDY         { $$ = new std::string("LDY"); }
-      | T_LSR         { $$ = new std::string("LSR"); }
-      | T_MVN         { $$ = new std::string("MVN"); }
-      | T_MVP         { $$ = new std::string("MVP"); }
-      | T_NOP         { $$ = new std::string("NOP"); }
-      | T_ORA         { $$ = new std::string("ORA"); }
-      | T_PEA         { $$ = new std::string("PEA"); }
-      | T_PEI         { $$ = new std::string("PEI"); }
-      | T_PER         { $$ = new std::string("PER"); }
-      | T_PHA         { $$ = new std::string("PHA"); }
-      | T_PHB         { $$ = new std::string("PHB"); }
-      | T_PHD         { $$ = new std::string("PHD"); }
-      | T_PHK         { $$ = new std::string("PHK"); }
-      | T_PHP         { $$ = new std::string("PHP"); }
-      | T_PHX         { $$ = new std::string("PHX"); }
-      | T_PHY         { $$ = new std::string("PHY"); }
-      | T_PLA         { $$ = new std::string("PLA"); }
-      | T_PLB         { $$ = new std::string("PLB"); }
-      | T_PLD         { $$ = new std::string("PLD"); }
-      | T_PLP         { $$ = new std::string("PLP"); }
-      | T_PLX         { $$ = new std::string("PLX"); }
-      | T_PLY         { $$ = new std::string("PLY"); }
-      | T_REP         { $$ = new std::string("REP"); }
-      | T_ROL         { $$ = new std::string("ROL"); }
-      | T_ROR         { $$ = new std::string("ROR"); }
-      | T_RTI         { $$ = new std::string("RTI"); }
-      | T_RTL         { $$ = new std::string("RTL"); }
-      | T_RTS         { $$ = new std::string("RTS"); }
-      | T_SBC         { $$ = new std::string("SBC"); }
-      | T_SEC         { $$ = new std::string("SEC"); }
-      | T_SED         { $$ = new std::string("SED"); }
-      | T_SEI         { $$ = new std::string("SEI"); }
-      | T_SEP         { $$ = new std::string("SEP"); }
-      | T_STA         { $$ = new std::string("STA"); }
-      | T_STP         { $$ = new std::string("STP"); }
-      | T_STX         { $$ = new std::string("STX"); }
-      | T_STY         { $$ = new std::string("STY"); }
-      | T_STZ         { $$ = new std::string("STZ"); }
-      | T_TAX         { $$ = new std::string("TAX"); }
-      | T_TAY         { $$ = new std::string("TAY"); }
-      | T_TCD         { $$ = new std::string("TCD"); }
-      | T_TCS         { $$ = new std::string("TCS"); }
-      | T_TDC         { $$ = new std::string("TDC"); }
-      | T_TRB         { $$ = new std::string("TRB"); }
-      | T_TSB         { $$ = new std::string("TSB"); }
-      | T_TSC         { $$ = new std::string("TSC"); }
-      | T_TSX         { $$ = new std::string("TSX"); }
-      | T_TXA         { $$ = new std::string("TXA"); }
-      | T_TXS         { $$ = new std::string("TXS"); }
-      | T_TXY         { $$ = new std::string("TXY"); }
-      | T_TYA         { $$ = new std::string("TYA"); }
-      | T_TYX         { $$ = new std::string("TYX"); }
-      | T_WAI         { $$ = new std::string("WAI"); }
-      | T_WDM         { $$ = new std::string("WDM"); }
-      | T_XBA         { $$ = new std::string("XBA"); }
-      | T_XCE         { $$ = new std::string("XCE"); }
+instr:  T_ADC         { $$ = new std::string(yytext); }
+      | T_AND         { $$ = new std::string(yytext); }
+      | T_ASL         { $$ = new std::string(yytext); }
+      | T_BCC         { $$ = new std::string(yytext); }
+      | T_BCS         { $$ = new std::string(yytext); }
+      | T_BEQ         { $$ = new std::string(yytext); }
+      | T_BIT         { $$ = new std::string(yytext); }
+      | T_BMI         { $$ = new std::string(yytext); }
+      | T_BNE         { $$ = new std::string(yytext); }
+      | T_BPL         { $$ = new std::string(yytext); }
+      | T_BRA         { $$ = new std::string(yytext); }
+      | T_BRK         { $$ = new std::string(yytext); }
+      | T_BRL         { $$ = new std::string(yytext); }
+      | T_BVC         { $$ = new std::string(yytext); }
+      | T_BVS         { $$ = new std::string(yytext); }
+      | T_CLC         { $$ = new std::string(yytext); }
+      | T_CLD         { $$ = new std::string(yytext); }
+      | T_CLI         { $$ = new std::string(yytext); }
+      | T_CLV         { $$ = new std::string(yytext); }
+      | T_CMP         { $$ = new std::string(yytext); }
+      | T_COP         { $$ = new std::string(yytext); }
+      | T_CPX         { $$ = new std::string(yytext); }
+      | T_CPY         { $$ = new std::string(yytext); }
+      | T_DEC         { $$ = new std::string(yytext); }
+      | T_DEX         { $$ = new std::string(yytext); }
+      | T_DEY         { $$ = new std::string(yytext); }
+      | T_EOR         { $$ = new std::string(yytext); }
+      | T_INC         { $$ = new std::string(yytext); }
+      | T_INX         { $$ = new std::string(yytext); }
+      | T_INY         { $$ = new std::string(yytext); }
+      | T_JML         { $$ = new std::string(yytext); }
+      | T_JMP         { $$ = new std::string(yytext); }
+      | T_JSR         { $$ = new std::string(yytext); }
+      | T_LDA         { $$ = new std::string(yytext); }
+      | T_LDX         { $$ = new std::string(yytext); }
+      | T_LDY         { $$ = new std::string(yytext); }
+      | T_LSR         { $$ = new std::string(yytext); }
+      | T_MVN         { $$ = new std::string(yytext); }
+      | T_MVP         { $$ = new std::string(yytext); }
+      | T_NOP         { $$ = new std::string(yytext); }
+      | T_ORA         { $$ = new std::string(yytext); }
+      | T_PEA         { $$ = new std::string(yytext); }
+      | T_PEI         { $$ = new std::string(yytext); }
+      | T_PER         { $$ = new std::string(yytext); }
+      | T_PHA         { $$ = new std::string(yytext); }
+      | T_PHB         { $$ = new std::string(yytext); }
+      | T_PHD         { $$ = new std::string(yytext); }
+      | T_PHK         { $$ = new std::string(yytext); }
+      | T_PHP         { $$ = new std::string(yytext); }
+      | T_PHX         { $$ = new std::string(yytext); }
+      | T_PHY         { $$ = new std::string(yytext); }
+      | T_PLA         { $$ = new std::string(yytext); }
+      | T_PLB         { $$ = new std::string(yytext); }
+      | T_PLD         { $$ = new std::string(yytext); }
+      | T_PLP         { $$ = new std::string(yytext); }
+      | T_PLX         { $$ = new std::string(yytext); }
+      | T_PLY         { $$ = new std::string(yytext); }
+      | T_REP         { $$ = new std::string(yytext); }
+      | T_ROL         { $$ = new std::string(yytext); }
+      | T_ROR         { $$ = new std::string(yytext); }
+      | T_RTI         { $$ = new std::string(yytext); }
+      | T_RTL         { $$ = new std::string(yytext); }
+      | T_RTS         { $$ = new std::string(yytext); }
+      | T_SBC         { $$ = new std::string(yytext); }
+      | T_SEC         { $$ = new std::string(yytext); }
+      | T_SED         { $$ = new std::string(yytext); }
+      | T_SEI         { $$ = new std::string(yytext); }
+      | T_SEP         { $$ = new std::string(yytext); }
+      | T_STA         { $$ = new std::string(yytext); }
+      | T_STP         { $$ = new std::string(yytext); }
+      | T_STX         { $$ = new std::string(yytext); }
+      | T_STY         { $$ = new std::string(yytext); }
+      | T_STZ         { $$ = new std::string(yytext); }
+      | T_TAX         { $$ = new std::string(yytext); }
+      | T_TAY         { $$ = new std::string(yytext); }
+      | T_TCD         { $$ = new std::string(yytext); }
+      | T_TCS         { $$ = new std::string(yytext); }
+      | T_TDC         { $$ = new std::string(yytext); }
+      | T_TRB         { $$ = new std::string(yytext); }
+      | T_TSB         { $$ = new std::string(yytext); }
+      | T_TSC         { $$ = new std::string(yytext); }
+      | T_TSX         { $$ = new std::string(yytext); }
+      | T_TXA         { $$ = new std::string(yytext); }
+      | T_TXS         { $$ = new std::string(yytext); }
+      | T_TXY         { $$ = new std::string(yytext); }
+      | T_TYA         { $$ = new std::string(yytext); }
+      | T_TYX         { $$ = new std::string(yytext); }
+      | T_WAI         { $$ = new std::string(yytext); }
+      | T_WDM         { $$ = new std::string(yytext); }
+      | T_XBA         { $$ = new std::string(yytext); }
+      | T_XCE         { $$ = new std::string(yytext); }
       ;
 %%
 
 std::vector<uint8_t> get_result()
 {
+  std::cout << "Total origins: " << assembler.ast.size() << std::endl;
+
+  for (auto org : assembler.ast)
+  {
+    std::cout << "Total instructions for org $" << std::hex << org.first << std::dec << ": " << org.second.size() << std::endl;
+    for (auto instr : org.second)
+    {
+      std::cout << "Key: " << instr.key() << std::endl
+                << "Type: " << instr.type() << std::endl
+                << "Size: " << instr.size() << std::endl
+                << "Address: " << std::endl
+                << "\tReal: " << instr.pc_addr() << std::endl
+                << "\tSNES: " << instr.snes_addr() << std::endl
+                << "Static: " << std::boolalpha << instr.is_static() << std::endl
+                << "Params: " << std::endl;
+
+      if (instr.param1() != "")
+      {
+        std::cout << "\t1: " << instr.param1() << std::endl;
+      }
+
+      if (instr.param2() != "")
+      {
+        std::cout << "\t2: " << instr.param2() << std::endl;
+      }
+
+      std::cout << std::endl;
+    }
+  }
+  /*
   std::vector<uint8_t> output;
 
-  std::cout << " Max address: " << max_address << std::endl;
+  std::cout << " Max address: " << assembler.max_addr << std::endl;
 
-  output.resize(max_address);
+  output.resize(assembler.max_addr);
 
   int total = instructions->size();
   int offset = 0;
@@ -603,8 +615,8 @@ std::vector<uint8_t> get_result()
       output[addr + i] = data[i];
     }
   }
-
-  return output;
+  */
+  return std::vector<uint8_t>();
 }
 
 std::map<std::string, int> get_labels()
