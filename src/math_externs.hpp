@@ -8,6 +8,7 @@ extern char *mathtext;
 extern FILE *mathin;
 
 extern void math_parse_expr(const std::string& str);
+extern int math_parse(const std::string& str);
 extern int math_result();
 
 #endif

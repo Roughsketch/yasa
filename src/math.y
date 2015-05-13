@@ -74,9 +74,30 @@ imm:    T_HEXLIT                { $$ = strtol(mathtext + 2, NULL, 16);  }
       | T_BINLIT                { $$ = strtol(mathtext + 2, NULL, 2);   }
       ;
 
-label:  T_IDENT                 { $$ = identifiers[std::string(mathtext)]; }
-      | T_SUBLABEL              { $$ = identifiers[std::string(mathtext)]; }
-      | T_IMMLABEL              { $$ = identifiers[std::string(mathtext)]; }
+label:  T_IDENT { 
+          if (identifiers.count(std::string(mathtext)) != 1)
+          {
+            YYABORT;
+          }
+
+          $$ = identifiers[std::string(mathtext)]; 
+        }
+      | T_SUBLABEL { 
+          if (identifiers.count(std::string(mathtext)) != 1)
+          {
+            YYABORT;
+          }
+
+          $$ = identifiers[std::string(mathtext)]; 
+        }
+      | T_IMMLABEL { 
+          if (identifiers.count(std::string(mathtext)) != 1)
+          {
+            YYABORT;
+          }
+
+          $$ = identifiers[std::string(mathtext)]; 
+        }
       ;
 
 number: bare                    { $$ = $1; }
@@ -102,4 +123,20 @@ math:   math T_PLUS math        { $$ = $1 + $3; }
 int math_result()
 {
   return math_output;
+}
+
+int math_parse(const std::string& expr)
+{
+  std::map<std::string, int> temp;
+  
+  math_parse_expr(expr);
+
+  int result = mathparse(temp);
+
+  if (result == 0)
+  {
+    return math_result();
+  }
+
+  return -1;
 }
