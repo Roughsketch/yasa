@@ -7,27 +7,36 @@ FLEXBISONSRCS=src/parser.cpp src/tokens.cpp src/math_parser.cpp src/math_tokens.
 SRCS=$(FLEXBISONSRCS) src/main.cpp src/assembler.cpp src/instruction.cpp src/util.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa
+DEBUG_EXE=bin/yasad
 
-all: flex bison $(SRCS) $(EXE)
+DEBUGOBJS = $(SRCS:.cpp=.o) src/test.o
 
-debug: CXXFLAGS+=-DDEBUG_TEST
-debug: CXXFLAGS+=-DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
-debug: SRCS+=src/test.cpp
-debug: flex bison $(SRCS) $(EXE)
+all: $(SRCS) $(EXE)
+
+debug: DEBUGFLAGS+=-DDEBUG_TEST
+debug: DEBUGFLAGS+=-DTEST_DIRECTORY='"$(subst /makefile,,$(abspath $(lastword $(MAKEFILE_LIST))))/tests"'
+debug: $(SRCS) $(DEBUG_EXE)
+
+$(DEBUG_EXE): $(DEBUGOBJS)
+	$(CXX) $(LDFLAGS) $(DEBUGOBJS) -o $@
 
 $(EXE): $(OBJS)
 	$(CXX) $(LDFLAGS) $(OBJS) -o $@
 
-.c.o:
-	$(CXX) $(CXXFLAGS) $< -o $@
+.cpp.o:
+	$(CXX) $(CXXFLAGS) $(DEBUGFLAGS) $< -c -o $@
 
-flex:
-	$(FLEX) -o src/tokens.cpp src/65c816.l
-	$(FLEX) -o src/math_tokens.cpp src/math.l
+src/tokens.cpp: src/65c816.l
+	$(FLEX) -o $@ $^
 
-bison:
-	$(BISON) -d -r states -o src/parser.cpp src/65c816.y
-	$(BISON) -d -o src/math_parser.cpp src/math.y
+src/math_tokens.cpp: src/math.l
+	$(FLEX) -o $@ $^
+
+src/parser.cpp: src/65c816.y
+	$(BISON) -d -o $@ $^
+
+src/math_parser.cpp: src/math.y
+	$(BISON) -d -o $@ $^
 
 rebuild: clean all
 
