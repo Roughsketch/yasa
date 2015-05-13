@@ -9,8 +9,17 @@ namespace util
 {
   bool isnum(const std::string& s);
 
+  enum Conversion
+  {
+    Unheadered = 0,
+    Headered,
+    PctoSnes,
+    SnestoPc = 0,
+    LoRom = 0
+  };
+
   //  Code taken from Alcaro's post: http://smwc.me/735496
-  int convaddr(int addr, int mode);
+  int convaddr(int addr, Conversion mode = SnestoPc);
 
   /*
     Returns byte size taken up by a number up to 3 bytes (max SNES limit for a parameter)

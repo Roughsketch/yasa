@@ -15,16 +15,7 @@ namespace util
     return (*p == 0);
   }
 
-  enum Convertion
-  {
-    Unheadered = 0,
-    Headered,
-    PctoSnes,
-    SnestoPc = 0,
-    LoRom = 0
-  };
-
-  int convaddr(int addr, int mode = 0) 
+  int convaddr(int addr, Conversion mode) 
   {
     bool header = mode & 1;
     bool ispc = mode & 2;
