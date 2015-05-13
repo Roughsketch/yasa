@@ -59,6 +59,8 @@ int main(int argc, char *argv[])
       std::cout << "Result: " << yyparse() << std::endl;
 
       fclose(fp);
+
+      get_result();
     }
   }
 
