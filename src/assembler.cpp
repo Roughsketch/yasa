@@ -10,7 +10,7 @@ namespace yasa
                {Stack, {{2, 0x63}}},
                {Direct, {{2, 0x65}, {3, 0x6D}, {4, 0x6F}}},
                {Indirect_Long, {{2, 0x67}}},
-               {Immediate, {{2, 0x69}}},
+               {Immediate, {{2, 0x69}, {3, 0x69}}},
                {Indirect_Y, {{2, 0x71}}},
                {Indirect, {{2, 0x72}}},
                {Stack_Y, {{2, 0x73}}},
@@ -21,7 +21,7 @@ namespace yasa
                {Stack, {{2, 0x23}}},
                {Direct, {{2, 0x25}, {3, 0x2D}, {4, 0x2F}}},
                {Indirect_Long, {{2, 0x27}}},
-               {Immediate, {{2, 0x29}}},
+               {Immediate, {{2, 0x29}, {3, 0x29}}},
                {Indirect_Y, {{2, 0x31}}},
                {Indirect, {{2, 0x32}}},
                {Stack_Y, {{2, 0x33}}},
@@ -31,20 +31,20 @@ namespace yasa
       {"ASL", {{Direct, {{2, 0x06}, {3, 0x0E}}},
                {Implied, {{1, 0x0A}}},
                {Indexed_X, {{2, 0x16}, {3, 0x1E}}}}},
-      {"BCC", {{Label, {{2, 0x90}}}}},
-      {"BCS", {{Label, {{2, 0xB0}}}}},
-      {"BEQ", {{Label, {{2, 0xF0}}}}},
+      {"BCC", {{Direct, {{2, 0x90}}}}}, // Label
+      {"BCS", {{Direct, {{2, 0xB0}}}}}, // Label
+      {"BEQ", {{Direct, {{2, 0xF0}}}}}, // Label
       {"BIT", {{Direct, {{2, 0x24}, {3, 0x2C}}},
                {Indexed_X, {{2, 0x34}, {3, 0x3C}}},
-               {Immediate, {{2, 0x89}}}}},
-      {"BMI", {{Label, {{2, 0x30}}}}},
-      {"BNE", {{Label, {{2, 0xD0}}}}},
-      {"BPL", {{Label, {{2, 0x10}}}}},
-      {"BRA", {{Label, {{2, 0x80}}}}},
+               {Immediate, {{2, 0x89}, {3, 0x89}}}}},
+      {"BMI", {{Direct, {{2, 0x30}}}}}, // Label
+      {"BNE", {{Direct, {{2, 0xD0}}}}}, // Label
+      {"BPL", {{Direct, {{2, 0x10}}}}}, // Label
+      {"BRA", {{Direct, {{2, 0x80}}}}}, // Label
       {"BRK", {{Implied, {{2, 0x00}}}, {Immediate, {{2, 0x00}}}}},
-      {"BRL", {{Label, {{3, 0x82}}}}},
-      {"BVC", {{Label, {{2, 0x50}}}}},
-      {"BVS", {{Label, {{2, 0x70}}}}},
+      {"BRL", {{Direct, {{3, 0x82}}}}}, // Label
+      {"BVC", {{Direct, {{2, 0x50}}}}}, // Label
+      {"BVS", {{Direct, {{2, 0x70}}}}}, // Label
       {"CLC", {{Implied, {{1, 0x18}}}}},
       {"CLD", {{Implied, {{1, 0xD8}}}}},
       {"CLI", {{Implied, {{1, 0x58}}}}},
@@ -53,7 +53,7 @@ namespace yasa
                {Stack, {{2, 0xC3}}},
                {Direct, {{2, 0xC5}, {3, 0xCD}, {4, 0xCF}}},
                {Indirect_Long, {{2, 0xC7}}},
-               {Immediate, {{2, 0xC9}}},
+               {Immediate, {{2, 0xC9}, {3, 0xC9}}},
                {Indirect_Y, {{2, 0xD1}}},
                {Indirect, {{2, 0xD2}}},
                {Stack_Y, {{2, 0xD3}}},
@@ -61,9 +61,9 @@ namespace yasa
                {Indirect_Long_Y, {{2, 0xD7}}},
                {Indexed_Y, {{3, 0xD9}}}}},
       {"COP", {{Implied, {{2, 0x02}}}, {Immediate, {{2, 0x02}}}}},
-      {"CPX", {{Immediate, {{2, 0xE0}}},
+      {"CPX", {{Immediate, {{2, 0xE0}, {3, 0xE0}}},
                {Direct, {{2, 0xE4}, {3, 0xEC}}}}},
-      {"CPY", {{Immediate, {{2, 0xC0}}},
+      {"CPY", {{Immediate, {{2, 0xC0}, {3, 0xC0}}},
                {Direct, {{2, 0xC4}, {3, 0xCC}}}}},
       {"DEC", {{Implied, {{1, 0x3A}}},
                {Direct, {{2, 0xC6}, {3, 0xCE}}},
@@ -74,7 +74,7 @@ namespace yasa
                {Stack, {{2, 0x43}}},
                {Direct, {{2, 0x45}, {3, 0x4D}, {4, 0x4F}}},
                {Indirect_Long, {{2, 0x47}}},
-               {Immediate, {{2, 0x49}}},
+               {Immediate, {{2, 0x49}, {3, 0x49}}},
                {Indirect_Y, {{2, 0x51}}},
                {Indirect, {{2, 0x52}}},
                {Stack_Y, {{2, 0x53}}},
@@ -90,23 +90,25 @@ namespace yasa
                {Indirect, {{3, 0x6C}}},
                {Indirect_X, {{3, 0x7C}}},
                {Indirect_Long, {{3, 0xDC}}}}},
+      {"JML", {{Direct, {{4, 0x5C}}}, {Indirect_Long, {{3, 0xDC}}}}},
       {"JSR", {{Direct, {{3, 0x20}, {4, 0x22}}},
                {Indirect_X, {{3, 0xFC}}}}},
+      {"JSL", {{Direct, {{4, 0x22}}}}},
       {"LDA", {{Indirect_X, {{2, 0xA1}}},
                {Stack, {{2, 0xA3}}},
                {Direct, {{2, 0xA5}, {3, 0xAD}, {4, 0xAF}}},
                {Indirect_Long, {{2, 0xA7}}},
-               {Immediate, {{2, 0xA9}}},
+               {Immediate, {{2, 0xA9}, {3, 0xA9}}},
                {Indirect_Y, {{2, 0xB1}}},
                {Indirect, {{2, 0xB2}}},
                {Stack_Y, {{2, 0xB3}}},
                {Indexed_X, {{2, 0xB5}, {3, 0xBD}, {4, 0xBF}}},
                {Indirect_Long_Y, {{2, 0xB7}}},
                {Indexed_Y, {{3, 0xB9}}}}},
-      {"LDX", {{Immediate, {{2, 0xA2}}},
+      {"LDX", {{Immediate, {{2, 0xA2}, {3, 0xA2}}},
                {Direct, {{2, 0xA6}, {3, 0xAE}}},
                {Indexed_Y, {{2, 0xB6}, {3, 0xBE}}}}},
-      {"LDY", {{Immediate, {{2, 0xA0}}},
+      {"LDY", {{Immediate, {{2, 0xA0}, {3, 0xA0}}},
                {Direct, {{2, 0xA4}, {3, 0xAC}}},
                {Indexed_X, {{2, 0xB4}, {3, 0xBC}}}}},
       {"LSR", {{Direct, {{2, 0x46}, {3, 0x4E}}},
@@ -119,7 +121,7 @@ namespace yasa
                {Stack, {{2, 0x03}}},
                {Direct, {{2, 0x05}, {3, 0x0D}, {4, 0x0F}}},
                {Indirect_Long, {{2, 0x07}}},
-               {Immediate, {{2, 0x09}}},
+               {Immediate, {{2, 0x09}, {3, 0x09}}},
                {Indirect_Y, {{2, 0x11}}},
                {Indirect, {{2, 0x12}}},
                {Stack_Y, {{2, 0x13}}},
@@ -128,7 +130,7 @@ namespace yasa
                {Indexed_Y, {{3, 0x19}}}}},
       {"PEA", {{Direct, {{3, 0xF4}}}}},
       {"PEI", {{Indirect, {{2, 0xD4}}}}},
-      {"PER", {{Label, {{3, 0x62}}}}},
+      {"PER", {{Direct, {{3, 0x62}}}}}, // Label
       {"PHA", {{Implied, {{1, 0x48}}}}},
       {"PHB", {{Implied, {{1, 0x8B}}}}},
       {"PHD", {{Implied, {{1, 0x0B}}}}},
@@ -156,7 +158,7 @@ namespace yasa
                {Stack, {{2, 0xE3}}},
                {Direct, {{2, 0xE5}, {3, 0xED}, {4, 0xEF}}},
                {Indirect_Long, {{2, 0xE7}}},
-               {Immediate, {{2, 0xE9}}},
+               {Immediate, {{2, 0xE9}, {3, 0xE9}}},
                {Indirect_Y, {{2, 0xF1}}},
                {Indirect, {{2, 0xF2}}},
                {Stack_Y, {{2, 0xF3}}},
@@ -212,29 +214,15 @@ namespace yasa
 
   uint8_t get_byte(std::string instr, AddressMode &mode, int size)
   {
-    static std::vector<std::string> modes = {
-      "Immediate",
-      "Implied",
-      "Direct",
-      "Indexed_X",
-      "Indexed_Y",
-      "Indirect",
-      "Indirect_X",
-      "Indirect_Y",
-      "Indirect_Long",
-      "Indirect_Long_Y",
-      "Stack",
-      "Stack_Y",
-      "Label",
-      "Block"
-    };
-
     if (has_byte(instr, mode, size))
     {
       return detail::ByteTable[instr][mode][size];
     }
 
-    throw InvalidInstructionException("Invalid instruction found: " + instr + " with size " + util::to_string(size) + " and mode " + modes[mode]);
+    throw InvalidInstructionException("Invalid instruction: " + instr +
+            " with size " + util::to_string(size) +
+            " and mode " + AddressModeString[mode] +
+            " does not exist.");
   }
 
   uint8_t get_avg_size(std::string instr, AddressMode& mode)
@@ -247,6 +235,36 @@ namespace yasa
       sum += map.first; // Add size
     }
 
+    if (sizes.size() == 0)
+    {
+      throw InvalidInstructionException("Invalid instruction: " + instr +
+            " does not have any opcodes for mode " + AddressModeString[mode]);
+    }
+
     return sum / sizes.size();
+  }
+
+  uint8_t get_opcode(std::string instr, AddressMode &mode, int size)
+  {
+    uint8_t opcode;
+
+    if (instr == "ADC")
+    {
+      opcode = 0x60 + mode;
+
+      if (mode == Direct  || mode == Indirect)
+      {
+        if (size == 2)
+        {
+          opcode += 0x08;
+        }
+        else if (size == 3)
+        {
+          opcode += 0x0A;
+        }
+      }
+    }
+
+    return opcode;
   }
 }
