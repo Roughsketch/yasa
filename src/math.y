@@ -16,13 +16,32 @@
   extern char * mathtext;
   extern int mathlineno;
 
-  int math_output;
+  int math_output = 0;
+  int math_size = 0;
 
   void matherror(std::map<std::string, int>& t, const char *s) {
     std::cout << "ERROR: " << s << " (line " << mathlineno << ")" << std::endl;
   }
 
-  #define MATHFPRINTF (stderr, format, args) puts(format)
+  void math_set_size(const char *str, int base)
+  {
+    int size = 0;
+    int length = strlen(str);
+
+    if (base == 2)
+    {
+      size = length / 4 + ((length % 4 > 0) ? 1 : 0);
+    }
+    else if (base == 16)
+    {
+      size = length / 2 + length % 2;
+    }
+
+    if (size > math_size)
+    {
+      math_size = size;
+    }
+  }
 %}
 %error-verbose
 %define api.prefix math
@@ -61,17 +80,36 @@
 
 %%
 
-value:  math T_END              { math_output = $1; YYACCEPT; }
+value:  math T_END {
+          math_output = $1;
+
+          //  If the output is larger than the max provided size, then correct it.
+          if (math_output > 0xFFFFFF)
+          {
+            std::cout << "Error: Expression evaluated is greater than max integer size." << std::endl;
+            YYERROR;
+          }
+          else if (math_output > 0xFFFF && math_size < 3)
+          {
+            math_size = 3;
+          }
+          else if (math_output > 0xFF && math_size < 2)
+          {
+            math_size = 2;
+          }
+
+          YYACCEPT; 
+        }
       ;
 
-bare:   T_HEX                   { $$ = strtol(mathtext + 1, NULL, 16); }
-      | T_ORD                   { $$ = strtol(mathtext + 0, NULL, 10); }
-      | T_BIN                   { $$ = strtol(mathtext + 1, NULL, 2);  }
+bare:   T_HEX      { $$ = strtol(mathtext + 1, NULL, 16); math_set_size(mathtext + 1, 16); }
+      | T_ORD      { $$ = strtol(mathtext + 0, NULL, 10); math_set_size(mathtext + 0, 10); }
+      | T_BIN      { $$ = strtol(mathtext + 1, NULL,  2); math_set_size(mathtext + 1,  2); }
       ;
 
-imm:    T_HEXLIT                { $$ = strtol(mathtext + 2, NULL, 16);  }
-      | T_ORDLIT                { $$ = strtol(mathtext + 1, NULL, 10);  }
-      | T_BINLIT                { $$ = strtol(mathtext + 2, NULL, 2);   }
+imm:    T_HEXLIT   { $$ = strtol(mathtext + 2, NULL, 16); math_set_size(mathtext + 2, 16); }
+      | T_ORDLIT   { $$ = strtol(mathtext + 1, NULL, 10); math_set_size(mathtext + 1, 10); }
+      | T_BINLIT   { $$ = strtol(mathtext + 2, NULL,  2); math_set_size(mathtext + 2,  2); }
       ;
 
 label:  T_IDENT { 
@@ -125,10 +163,17 @@ int math_result()
   return math_output;
 }
 
+int math_get_size()
+{
+  return math_size;
+}
+
 int math_parse(const std::string& expr)
 {
   std::map<std::string, int> temp;
-  
+
+  math_output = 0;
+  math_size = 0;
   math_parse_expr(expr);
 
   int result = mathparse(temp);
@@ -138,5 +183,5 @@ int math_parse(const std::string& expr)
     return math_result();
   }
 
-  return -1;
+  return 1 << 24;
 }
