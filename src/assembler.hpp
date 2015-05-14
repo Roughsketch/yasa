@@ -7,7 +7,6 @@
 #include <vector>
 
 #include "instruction.hpp"
-#include "integer.hpp"
 #include "util.hpp"
 
 namespace yasa

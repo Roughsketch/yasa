@@ -6,7 +6,6 @@
 #include <stdexcept>
 
 #include "mode.hpp"
-#include "integer.hpp"
 #include "assembler.hpp"
 #include "externs.hpp"
 

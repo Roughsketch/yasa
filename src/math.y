@@ -2,8 +2,6 @@
   #include <string>
   #include <map>
   #include <cstdint>
-
-  #include "integer.hpp"
 }
 
 %{
@@ -70,10 +68,8 @@
     std::string *string;
     int token;
     int number;
-    yasa::Integer *yasa_integer;
 }
 
-%type <yasa_integer>  value
 %type <number>  bare imm label number math
 
 %start value
