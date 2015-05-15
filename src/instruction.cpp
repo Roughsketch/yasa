@@ -45,7 +45,6 @@ namespace yasa
           break;
         case 'w':
           m_size = 3;
-          std::cout << "Set size to 3" << std::endl;
           break;
         case 'l':
           m_size = 4;
@@ -57,7 +56,7 @@ namespace yasa
     else
     {
       m_size = get_avg_size(key, mode);
-      std::cout << "Average size: " << m_size << std::endl;
+      m_setsize = has_set_size(key, mode);
     }
 
     std::map<std::string, int> temp;
@@ -80,7 +79,6 @@ namespace yasa
           m_params[0].value = result;
           m_params[0].size = math_get_size();
           m_size = math_get_size() + 1;
-          std::cout << "One param size: " << math_get_size() << std::endl;
         }
       }
     }
