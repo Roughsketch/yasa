@@ -244,7 +244,7 @@ namespace yasa
     return sum / sizes.size();
   }
 
-  uint8_t get_opcode(std::string instr, AddressMode &mode, int size)
+  uint8_t get_opcode(std::string instr, AddressMode& mode, int size)
   {
     uint8_t opcode;
 
@@ -266,5 +266,43 @@ namespace yasa
     }
 
     return opcode;
+  }
+
+  //  Returns true if the instruction with the given mode can only have one size
+  bool has_set_size(std::string instr, AddressMode& mode)
+  {
+    auto sizes = detail::ByteTable[instr][mode];
+
+    //  Return false if invalid instruction
+    if (sizes.size() == 0)
+    {
+      return false;
+    }
+
+    //  Return true if there is only one size
+    if (sizes.size() == 1)
+    {
+      return true;
+    }
+    else
+    {
+      int first = 0;
+
+      //  Go through each size and if there is a difference, then return false
+      for (auto& size : sizes)
+      {
+        if (first == 0)
+        {
+          first = size.first;
+        }
+        else if (first != size.first)
+        {
+          return false;
+        }
+      }
+    }
+
+    //  All sizes match, return true
+    return true;
   }
 }
