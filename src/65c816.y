@@ -1,6 +1,7 @@
 %code requires {
   #include <string>
   #include <iostream>
+  #include <iomanip>
   #include <map>
   #include <vector>
 
@@ -39,6 +40,7 @@
 
   std::vector<std::string> label_ids;
   std::map<std::string, int> labels;
+  std::map<std::string, std::string> defines;
 
 
   void yyerror(const char *s) {
@@ -147,7 +149,6 @@
     std::string *string;
     std::vector<uint8_t> *vector;
     int token;
-    yasa::Integer *number;
     yasa::Instruction *instruction;
     std::vector<yasa::Instruction> *instrvec;
 }
@@ -190,8 +191,10 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
       | input command { 
           $$ = $1; 
         }
-      | input define T_EQUAL number { 
+      | input define T_EQUAL param { 
           $$ = $1;
+
+          defines[*$2] = *$4;
 
           std::cout << "Define: " << *$2 << " = " << *$4 << std::endl;
         }
@@ -220,7 +223,7 @@ line:   expr {
 define: T_DEFINE { $$ = new std::string(yytext); }
 
 command:
-        T_ORIGIN number {
+        T_ORIGIN param {
           std::cout << "Setting origin to " << *$2 << std::endl;
 
           int value = math_parse(*$2);
@@ -408,6 +411,15 @@ param:  param math param  { $$ = new std::string(*$1 + *$2 + *$3); }
       | number            { $$ = $1; }
       | T_IDENT           { $$ = new std::string(yytext); }
       | T_SUBLABEL        { $$ = new std::string(get_sublabel_name(yytext)); }
+      | T_DEFINE          { 
+          if (defines.count(std::string(yytext)) != 1)
+          {
+            std::cout << "Define used before being initialized: (" << yytext << " at line " << yylineno << ")" << std::endl;
+            YYERROR;
+          }
+
+          $$ = new std::string(defines[std::string(yytext)]);
+        }
       ;
 
 math:   T_PLUS        { $$ = new std::string("+");  }
@@ -566,6 +578,7 @@ instr:  T_ADC         { $$ = new std::string(yytext); }
 
 std::vector<uint8_t> get_result()
 {
+  std::vector<uint8_t> data;
   std::cout << "Total origins: " << assembler.ast.size() << std::endl;
 
   for (auto org : assembler.ast)
@@ -582,18 +595,36 @@ std::vector<uint8_t> get_result()
                 << "Static: " << std::boolalpha << instr.is_static() << std::endl
                 << "Params: " << std::endl;
 
-      if (instr.param1() != "")
+      if (instr.get_param(1) != "")
       {
-        std::cout << "\t1: " << instr.param1() << std::endl;
+        std::cout << "\t1: " << instr.get_param(1) << std::endl;
       }
 
-      if (instr.param2() != "")
+      if (instr.get_param(2) != "")
       {
-        std::cout << "\t2: " << instr.param2() << std::endl;
+        std::cout << "\t2: " << instr.get_param(2) << std::endl;
       }
 
       std::cout << std::endl;
+
+      if (instr.is_static())
+      {
+        auto temp = instr.data();
+
+        data.insert(data.end(), temp.begin(), temp.end());
+      }
     }
+  }
+
+  int i = 0;
+  for (auto byte : data)
+  {
+    if (++i % 16 == 0)
+    {
+      std::cout << std::endl;
+    }
+
+    std::cout << std::setfill('0') << std::setw(2) << std::hex << static_cast<int>(byte) << " ";
   }
   /*
   std::vector<uint8_t> output;
@@ -616,7 +647,7 @@ std::vector<uint8_t> get_result()
     }
   }
   */
-  return std::vector<uint8_t>();
+  return data;
 }
 
 std::map<std::string, int> get_labels()
