@@ -8,7 +8,7 @@
   #include <iostream>
   #include <map>
 
-  #include "assembler.hpp"
+  #include "math_externs.hpp"
 
   extern int mathlex();
   extern char * mathtext;
@@ -47,10 +47,10 @@
 %parse-param {std::map<std::string, int>& identifiers}
 
 //  Names / Labels
-%token <string> T_IDENT T_SUBLABEL T_IMMLABEL T_END
+%token <string> T_IDENT T_END
 
 //  Numbers
-%token <string> T_HEX T_BIN T_ORD T_HEXLIT T_BINLIT T_ORDLIT
+%token <string> T_HEX T_BIN T_ORD
 
 //  Math
 %token <string> T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL T_LPAREN T_RPAREN
@@ -70,7 +70,7 @@
     int number;
 }
 
-%type <number>  bare imm label number math
+%type <number>  label number math
 
 %start value
 
@@ -98,16 +98,6 @@ value:  math T_END {
         }
       ;
 
-bare:   T_HEX      { $$ = strtol(mathtext + 1, NULL, 16); math_set_size(mathtext + 1, 16); }
-      | T_ORD      { $$ = strtol(mathtext + 0, NULL, 10); math_set_size(mathtext + 0, 10); }
-      | T_BIN      { $$ = strtol(mathtext + 1, NULL,  2); math_set_size(mathtext + 1,  2); }
-      ;
-
-imm:    T_HEXLIT   { $$ = strtol(mathtext + 2, NULL, 16); math_set_size(mathtext + 2, 16); }
-      | T_ORDLIT   { $$ = strtol(mathtext + 1, NULL, 10); math_set_size(mathtext + 1, 10); }
-      | T_BINLIT   { $$ = strtol(mathtext + 2, NULL,  2); math_set_size(mathtext + 2,  2); }
-      ;
-
 label:  T_IDENT { 
           if (identifiers.count(std::string(mathtext)) != 1)
           {
@@ -116,27 +106,12 @@ label:  T_IDENT {
 
           $$ = identifiers[std::string(mathtext)]; 
         }
-      | T_SUBLABEL { 
-          if (identifiers.count(std::string(mathtext)) != 1)
-          {
-            YYABORT;
-          }
-
-          $$ = identifiers[std::string(mathtext)]; 
-        }
-      | T_IMMLABEL { 
-          if (identifiers.count(std::string(mathtext)) != 1)
-          {
-            YYABORT;
-          }
-
-          $$ = identifiers[std::string(mathtext)]; 
-        }
       ;
 
-number: bare                    { $$ = $1; }
-      | imm                     { $$ = $1; }
-      | label                   { $$ = $1; }
+number: T_HEX      { $$ = strtol(mathtext + 1, NULL, 16); math_set_size(mathtext + 1, 16); }
+      | T_ORD      { $$ = strtol(mathtext + 0, NULL, 10); math_set_size(mathtext + 0, 10); }
+      | T_BIN      { $$ = strtol(mathtext + 1, NULL,  2); math_set_size(mathtext + 1,  2); }
+      | label      { $$ = $1; }
       ;
 
 math:   math T_PLUS math        { $$ = $1 + $3; }

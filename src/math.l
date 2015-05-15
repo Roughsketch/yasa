@@ -17,15 +17,10 @@
 
 %%
 [ \t\r]+                      ; //  Ignore Whitespace
-^\s*\.+[a-zA-Z_][a-zA-Z0-9_]*   SAVE_TOKEN; return TOKEN(T_SUBLABEL);
-#[a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_IMMLABEL);
 (\.+)?[a-zA-Z_][a-zA-Z0-9_]*    SAVE_TOKEN; return TOKEN(T_IDENT);
 $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
-#$[0-9a-fA-F]+                  SAVE_TOKEN; return TOKEN(T_HEXLIT);
 %[01]+                          SAVE_TOKEN; return TOKEN(T_BIN);
-#%[01]+                         SAVE_TOKEN; return TOKEN(T_BINLIT);
 [0-9]*                          SAVE_TOKEN; return TOKEN(T_ORD);
-#[0-9]*                         SAVE_TOKEN; return TOKEN(T_ORDLIT);
 \(                              return TOKEN(T_LPAREN);
 \)                              return TOKEN(T_RPAREN);
 \>\>                            return TOKEN(T_RSHIFT);
