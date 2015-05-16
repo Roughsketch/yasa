@@ -25,6 +25,10 @@
   extern char * yytext;
   extern int yylineno;
 
+  void yyerror(const char *s) {
+    printf("ERROR: %s (line %d)\n", s, yylineno); 
+  }
+
   struct Assembler
   {
     int snespos;
@@ -32,74 +36,67 @@
     int max_addr;
     int org;
 
+    std::vector<std::string> label_ids;
+    std::map<std::string, int> labels;
+    std::map<std::string, std::string> defines;
+
     std::map<int, std::vector<yasa::Instruction>> ast;
+
+    std::string *add_sublabel_name(const char *text)
+    {
+      std::string sublabel = "";
+      std::string id = std::string(text);
+      int i = 0;
+
+      while (id[i] == '.')
+      {
+        if (i > label_ids.size())
+        {
+          std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
+          return nullptr;
+        }
+
+        sublabel += label_ids[i] + "_";
+        i++;
+      }
+
+      id = id.substr(i);
+
+      //  Sublabel was dedented
+      if (i != label_ids.size())
+      {
+        //  Erase all sublabels deeper than this one
+        label_ids.erase(label_ids.begin() + i, label_ids.end());
+      }
+      
+      //  Push back the new sublabel
+      label_ids.push_back(id);
+      return new std::string(sublabel + id);
+    }
+
+    std::string get_sublabel_name(const char *text)
+    {
+      std::string sublabel = "";
+      std::string id = std::string(text);
+      int i = 0;
+
+      while (id[i] == '.')
+      {
+        if (i > label_ids.size())
+        {
+          std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
+          return nullptr;
+        }
+
+        sublabel += label_ids[i] + "_";
+        i++;
+      }
+
+      return sublabel + id;
+    }
   };
 
-
   Assembler assembler;
-
-  std::vector<std::string> label_ids;
-  std::map<std::string, int> labels;
-  std::map<std::string, std::string> defines;
-
-
-  void yyerror(const char *s) {
-    printf("ERROR: %s (line %d)\n", s, yylineno); 
-  }
-
-
-  std::string *add_sublabel_name(const char *text)
-  {
-    std::string sublabel = "";
-    std::string id = std::string(text);
-    int i = 0;
-
-    while (id[i] == '.')
-    {
-      if (i > label_ids.size())
-      {
-        std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-        return nullptr;
-      }
-
-      sublabel += label_ids[i] + "_";
-      i++;
-    }
-
-    id = id.substr(i);
-
-    //  Sublabel was dedented
-    if (i != label_ids.size())
-    {
-      //  Erase all sublabels deeper than this one
-      label_ids.erase(label_ids.begin() + i, label_ids.end());
-    }
-    
-    //  Push back the new sublabel
-    label_ids.push_back(id);
-    return new std::string(sublabel + id);
-  }
-
-  std::string get_sublabel_name(const char *text)
-  {
-    std::string sublabel = "";
-    std::string id = std::string(text);
-    int i = 0;
-
-    while (id[i] == '.')
-    {
-      if (i > label_ids.size())
-      {
-        std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-        return nullptr;
-      }
-
-      sublabel += label_ids[i] + "_";
-      i++;
-    }
-
-    return sublabel + id;
-  }
 %}
 
 //  Names / Labels
@@ -173,13 +170,13 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
           std::cout << "Label: " << yytext << std::endl;
           $$ = $1;
 
-          if (labels.count(*$2) == 1)
+          if (assembler.labels.count(*$2) == 1)
           {
             std::cout << "Error: label '" << *$2 << "' redefined on line " << yylineno << std::endl;
             YYERROR;
           }
 
-          labels[*$2] = assembler.snespos;
+          assembler.labels[*$2] = assembler.snespos;
 
           if (assembler.max_addr < assembler.snespos)
           {
@@ -194,7 +191,7 @@ input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
       | input define T_EQUAL param { 
           $$ = $1;
 
-          defines[*$2] = *$4;
+          assembler.defines[*$2] = *$4;
 
           std::cout << "Define: " << *$2 << " = " << *$4 << std::endl;
         }
@@ -410,15 +407,15 @@ block:
 param:  param math param  { $$ = new std::string(*$1 + *$2 + *$3); }
       | number            { $$ = $1; }
       | T_IDENT           { $$ = new std::string(yytext); }
-      | T_SUBLABEL        { $$ = new std::string(get_sublabel_name(yytext)); }
+      | T_SUBLABEL        { $$ = new std::string(assembler.get_sublabel_name(yytext)); }
       | T_DEFINE          { 
-          if (defines.count(std::string(yytext)) != 1)
+          if (assembler.defines.count(std::string(yytext)) != 1)
           {
             std::cout << "Define used before being initialized: (" << yytext << " at line " << yylineno << ")" << std::endl;
             YYERROR;
           }
 
-          $$ = new std::string(defines[std::string(yytext)]);
+          $$ = new std::string(assembler.defines[std::string(yytext)]);
         }
       ;
 
@@ -468,7 +465,7 @@ stack:  T_STACK       { $$ = new std::string("S"); }
       // | T_MINUS       { $$ = new std::string("CODE_" + util::to_string(assembler.snespos)); }
       // | 
 label:  T_SUBLABEL  {
-          $$ = add_sublabel_name(yytext);
+          $$ = assembler.add_sublabel_name(yytext);
         }
       | T_LABEL     {
           //  Get rid of trailing :
@@ -477,8 +474,8 @@ label:  T_SUBLABEL  {
           //  Remove trailing :
           $$ = new std::string(temp.substr(0, temp.size() - 1));
 
-          label_ids.clear();
-          label_ids.push_back(*$$);
+          assembler.label_ids.clear();
+          assembler.label_ids.push_back(*$$);
         }
       ;
 
@@ -652,5 +649,5 @@ std::vector<uint8_t> get_result()
 
 std::map<std::string, int> get_labels()
 {
-  return labels;
+  return assembler.labels;
 }
