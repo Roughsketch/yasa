@@ -14,6 +14,7 @@
   #include <map>
   #include <stack>
   #include <string>
+  #include <algorithm>
 
   #include "util.hpp"
   #include "assembler.hpp"
@@ -27,6 +28,17 @@
 
   void yyerror(const char *s) {
     printf("ERROR: %s (line %d)\n", s, yylineno); 
+  }
+
+  bool is_relative_jump(std::string& instr)
+  {
+    const static std::vector<std::string> jumps = { 
+      "BCC", "BCS", "BEQ", "BMI",
+      "BNE", "BPL", "BRA", "BRL",
+      "BVC", "BVS", "PER"
+    };
+
+    return std::find(jumps.begin(), jumps.end(), instr) != jumps.end();
   }
 
   struct Assembler
@@ -153,7 +165,6 @@
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block 
 %type <string>      instr index stack accum define label math param number
-//%type <number> number
 
 %start program
 
@@ -227,7 +238,6 @@ command:
 
           assembler.snespos = value;
           assembler.org = value;
-          std::cout << "Org is now " << assembler.org << std::endl;
         }
       ;
 
@@ -278,7 +288,14 @@ direct:
         //   YYERROR;
         // }
 
-        $$ = new yasa::Instruction(*$1, yasa::Direct, assembler.snespos, *$2); 
+        if (is_relative_jump(*$1))
+        {
+          $$ = new yasa::Instruction(*$1, yasa::Label, assembler.snespos, *$2); 
+        }
+        else
+        {
+          $$ = new yasa::Instruction(*$1, yasa::Direct, assembler.snespos, *$2); 
+        }
       };
 
 indirect:

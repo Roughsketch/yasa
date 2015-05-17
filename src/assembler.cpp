@@ -31,20 +31,20 @@ namespace yasa
       {"ASL", {{Direct, {{2, 0x06}, {3, 0x0E}}},
                {Implied, {{1, 0x0A}}},
                {Indexed_X, {{2, 0x16}, {3, 0x1E}}}}},
-      {"BCC", {{Direct, {{2, 0x90}}}}}, // Label
-      {"BCS", {{Direct, {{2, 0xB0}}}}}, // Label
-      {"BEQ", {{Direct, {{2, 0xF0}}}}}, // Label
+      {"BCC", {{Label, {{2, 0x90}}}}},
+      {"BCS", {{Label, {{2, 0xB0}}}}},
+      {"BEQ", {{Label, {{2, 0xF0}}}}},
       {"BIT", {{Direct, {{2, 0x24}, {3, 0x2C}}},
                {Indexed_X, {{2, 0x34}, {3, 0x3C}}},
                {Immediate, {{2, 0x89}, {3, 0x89}}}}},
-      {"BMI", {{Direct, {{2, 0x30}}}}}, // Label
-      {"BNE", {{Direct, {{2, 0xD0}}}}}, // Label
-      {"BPL", {{Direct, {{2, 0x10}}}}}, // Label
-      {"BRA", {{Direct, {{2, 0x80}}}}}, // Label
+      {"BMI", {{Label, {{2, 0x30}}}}},
+      {"BNE", {{Label, {{2, 0xD0}}}}},
+      {"BPL", {{Label, {{2, 0x10}}}}},
+      {"BRA", {{Label, {{2, 0x80}}}}},
       {"BRK", {{Implied, {{2, 0x00}}}, {Immediate, {{2, 0x00}}}}},
-      {"BRL", {{Direct, {{3, 0x82}}}}}, // Label
-      {"BVC", {{Direct, {{2, 0x50}}}}}, // Label
-      {"BVS", {{Direct, {{2, 0x70}}}}}, // Label
+      {"BRL", {{Label, {{3, 0x82}}}}},
+      {"BVC", {{Label, {{2, 0x50}}}}},
+      {"BVS", {{Label, {{2, 0x70}}}}},
       {"CLC", {{Implied, {{1, 0x18}}}}},
       {"CLD", {{Implied, {{1, 0xD8}}}}},
       {"CLI", {{Implied, {{1, 0x58}}}}},
@@ -130,7 +130,7 @@ namespace yasa
                {Indexed_Y, {{3, 0x19}}}}},
       {"PEA", {{Direct, {{3, 0xF4}}}}},
       {"PEI", {{Indirect, {{2, 0xD4}}}}},
-      {"PER", {{Direct, {{3, 0x62}}}}}, // Label
+      {"PER", {{Label, {{3, 0x62}}}}},
       {"PHA", {{Implied, {{1, 0x48}}}}},
       {"PHB", {{Implied, {{1, 0x8B}}}}},
       {"PHD", {{Implied, {{1, 0x0B}}}}},
