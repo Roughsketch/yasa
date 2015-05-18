@@ -7,6 +7,7 @@
 %{
   #include <iostream>
   #include <map>
+  #include <cstring>
 
   #include "math_externs.hpp"
 
