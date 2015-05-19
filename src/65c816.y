@@ -229,6 +229,7 @@ line:   expr {
       ;
 
 define: T_DEFINE { $$ = new std::string(yytext); }
+      ;
 
 command:
         T_ORIGIN param {
@@ -496,98 +497,23 @@ label:  T_SUBLABEL  {
         }
       ;
 
-instr:  T_ADC         { $$ = new std::string(yytext); }
-      | T_AND         { $$ = new std::string(yytext); }
-      | T_ASL         { $$ = new std::string(yytext); }
-      | T_BCC         { $$ = new std::string(yytext); }
-      | T_BCS         { $$ = new std::string(yytext); }
-      | T_BEQ         { $$ = new std::string(yytext); }
-      | T_BIT         { $$ = new std::string(yytext); }
-      | T_BMI         { $$ = new std::string(yytext); }
-      | T_BNE         { $$ = new std::string(yytext); }
-      | T_BPL         { $$ = new std::string(yytext); }
-      | T_BRA         { $$ = new std::string(yytext); }
-      | T_BRK         { $$ = new std::string(yytext); }
-      | T_BRL         { $$ = new std::string(yytext); }
-      | T_BVC         { $$ = new std::string(yytext); }
-      | T_BVS         { $$ = new std::string(yytext); }
-      | T_CLC         { $$ = new std::string(yytext); }
-      | T_CLD         { $$ = new std::string(yytext); }
-      | T_CLI         { $$ = new std::string(yytext); }
-      | T_CLV         { $$ = new std::string(yytext); }
-      | T_CMP         { $$ = new std::string(yytext); }
-      | T_COP         { $$ = new std::string(yytext); }
-      | T_CPX         { $$ = new std::string(yytext); }
-      | T_CPY         { $$ = new std::string(yytext); }
-      | T_DEC         { $$ = new std::string(yytext); }
-      | T_DEX         { $$ = new std::string(yytext); }
-      | T_DEY         { $$ = new std::string(yytext); }
-      | T_EOR         { $$ = new std::string(yytext); }
-      | T_INC         { $$ = new std::string(yytext); }
-      | T_INX         { $$ = new std::string(yytext); }
-      | T_INY         { $$ = new std::string(yytext); }
-      | T_JML         { $$ = new std::string(yytext); }
-      | T_JMP         { $$ = new std::string(yytext); }
-      | T_JSR         { $$ = new std::string(yytext); }
-      | T_LDA         { $$ = new std::string(yytext); }
-      | T_LDX         { $$ = new std::string(yytext); }
-      | T_LDY         { $$ = new std::string(yytext); }
-      | T_LSR         { $$ = new std::string(yytext); }
-      | T_MVN         { $$ = new std::string(yytext); }
-      | T_MVP         { $$ = new std::string(yytext); }
-      | T_NOP         { $$ = new std::string(yytext); }
-      | T_ORA         { $$ = new std::string(yytext); }
-      | T_PEA         { $$ = new std::string(yytext); }
-      | T_PEI         { $$ = new std::string(yytext); }
-      | T_PER         { $$ = new std::string(yytext); }
-      | T_PHA         { $$ = new std::string(yytext); }
-      | T_PHB         { $$ = new std::string(yytext); }
-      | T_PHD         { $$ = new std::string(yytext); }
-      | T_PHK         { $$ = new std::string(yytext); }
-      | T_PHP         { $$ = new std::string(yytext); }
-      | T_PHX         { $$ = new std::string(yytext); }
-      | T_PHY         { $$ = new std::string(yytext); }
-      | T_PLA         { $$ = new std::string(yytext); }
-      | T_PLB         { $$ = new std::string(yytext); }
-      | T_PLD         { $$ = new std::string(yytext); }
-      | T_PLP         { $$ = new std::string(yytext); }
-      | T_PLX         { $$ = new std::string(yytext); }
-      | T_PLY         { $$ = new std::string(yytext); }
-      | T_REP         { $$ = new std::string(yytext); }
-      | T_ROL         { $$ = new std::string(yytext); }
-      | T_ROR         { $$ = new std::string(yytext); }
-      | T_RTI         { $$ = new std::string(yytext); }
-      | T_RTL         { $$ = new std::string(yytext); }
-      | T_RTS         { $$ = new std::string(yytext); }
-      | T_SBC         { $$ = new std::string(yytext); }
-      | T_SEC         { $$ = new std::string(yytext); }
-      | T_SED         { $$ = new std::string(yytext); }
-      | T_SEI         { $$ = new std::string(yytext); }
-      | T_SEP         { $$ = new std::string(yytext); }
-      | T_STA         { $$ = new std::string(yytext); }
-      | T_STP         { $$ = new std::string(yytext); }
-      | T_STX         { $$ = new std::string(yytext); }
-      | T_STY         { $$ = new std::string(yytext); }
-      | T_STZ         { $$ = new std::string(yytext); }
-      | T_TAX         { $$ = new std::string(yytext); }
-      | T_TAY         { $$ = new std::string(yytext); }
-      | T_TCD         { $$ = new std::string(yytext); }
-      | T_TCS         { $$ = new std::string(yytext); }
-      | T_TDC         { $$ = new std::string(yytext); }
-      | T_TRB         { $$ = new std::string(yytext); }
-      | T_TSB         { $$ = new std::string(yytext); }
-      | T_TSC         { $$ = new std::string(yytext); }
-      | T_TSX         { $$ = new std::string(yytext); }
-      | T_TXA         { $$ = new std::string(yytext); }
-      | T_TXS         { $$ = new std::string(yytext); }
-      | T_TXY         { $$ = new std::string(yytext); }
-      | T_TYA         { $$ = new std::string(yytext); }
-      | T_TYX         { $$ = new std::string(yytext); }
-      | T_WAI         { $$ = new std::string(yytext); }
-      | T_WDM         { $$ = new std::string(yytext); }
-      | T_XBA         { $$ = new std::string(yytext); }
-      | T_XCE         { $$ = new std::string(yytext); }
+instr:  keyword       { $$ = new std::string(yytext); }
       ;
+
+keyword:  T_ADC | T_AND | T_ASL | T_BCC | T_BCS | T_BEQ | T_BIT | T_BMI |
+          T_BNE | T_BPL | T_BRA | T_BRK | T_BRL | T_BVC | T_BVS | T_CLC |
+          T_CLD | T_CLI | T_CLV | T_CMP | T_COP | T_CPX | T_CPY | T_DEC |
+          T_DEX | T_DEY | T_EOR | T_INC | T_INX | T_INY | T_JML | T_JMP |
+          T_JSR | T_LDA | T_LDX | T_LDY | T_LSR | T_MVN | T_MVP | T_NOP |
+          T_ORA | T_PEA | T_PEI | T_PER | T_PHA | T_PHB | T_PHD | T_PHK |
+          T_PHP | T_PHX | T_PHY | T_PLA | T_PLB | T_PLD | T_PLP | T_PLX |
+          T_PLY | T_REP | T_ROL | T_ROR | T_RTI | T_RTL | T_RTS | T_SBC |
+          T_SEC | T_SED | T_SEI | T_SEP | T_STA | T_STP | T_STX | T_STY |
+          T_STZ | T_TAX | T_TAY | T_TCD | T_TCS | T_TDC | T_TRB | T_TSB |
+          T_TSC | T_TSX | T_TXA | T_TXS | T_TXY | T_TYA | T_TYX | T_WAI |
+          T_WDM | T_XBA | T_XCE
+        ;
+        
 %%
 
 std::vector<uint8_t> get_result()
