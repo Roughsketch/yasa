@@ -54,7 +54,7 @@
 %token <string> T_HEX T_BIN T_ORD
 
 //  Math
-%token <string> T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL T_LPAREN T_RPAREN
+%token <string> T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGCOMPL T_EQUAL T_LPAREN T_RPAREN
 
 //  Math precedence
 %left T_LOGOR
@@ -63,7 +63,7 @@
 %left T_RSHIFT T_LSHIFT
 %left T_PLUS T_MINUS
 %left T_MULT T_DIV T_MOD
-%left T_LOGNOT
+%left T_LOGCOMPL
 
 %union {
     std::string *string;
@@ -125,6 +125,7 @@ math:   math T_PLUS math        { $$ = $1 + $3; }
       | math T_LOGXOR math      { $$ = $1 ^ $3; }
       | math T_RSHIFT math      { $$ = $1 >> $3; }
       | math T_LSHIFT math      { $$ = $1 << $3; }
+      | T_LOGCOMPL math         { $$ = ~$2; }
       | T_LPAREN math T_RPAREN  { $$ = $2; }
       | number
       ;
