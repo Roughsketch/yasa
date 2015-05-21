@@ -141,7 +141,7 @@
 %token <string>   T_ORIGIN T_DEFINE
 
 //  Math
-%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL
+%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL T_LOGCOMPL
 
 //  Math precedence
 %left T_LOGOR
@@ -150,7 +150,7 @@
 %left T_RSHIFT T_LSHIFT
 %left T_PLUS T_MINUS
 %left T_MULT T_DIV T_MOD
-%left T_LOGNOT
+%left T_LOGNOT T_LOGCOMPL
 
 %right T_LPAREN T_RPAREN
 
@@ -447,6 +447,7 @@ math:   T_PLUS        { $$ = new std::string("+");  }
       | T_LOGXOR      { $$ = new std::string("^");  }
       | T_RSHIFT      { $$ = new std::string(">>"); }
       | T_LSHIFT      { $$ = new std::string("<<"); }
+      | T_LOGCOMPL    { $$ = new std::string("~");  }
       //| T_LPAREN math T_RPAREN  { $$ = $2; }      //  Can't do since it conflicts with indirect commands
       ;
 

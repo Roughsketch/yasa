@@ -195,6 +195,7 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 \|                              return TOKEN(T_LOGOR);
 \^                              return TOKEN(T_LOGXOR);
 !                               return TOKEN(T_LOGNOT);
+~                               return TOKEN(T_LOGCOMPL);
 =                               return TOKEN(T_EQUAL);
 #                               return TOKEN(T_HASH);
 .                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
