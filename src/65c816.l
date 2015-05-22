@@ -30,7 +30,8 @@
 ;.*                             ;                     //  And comments
 \n                              return TOKEN(T_LINE);
 
-(?i:LOROM)                      ;
+(?i:LOROM)                      return TOKEN(T_LOROM);
+(?i:HIROM)                      return TOKEN(T_HIROM);
 (?i:HEADER)                     ;
 (?i:incsrc)[ \t]*+              BEGIN(incsrc);
 ![a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_DEFINE);

@@ -47,6 +47,7 @@
     int realpos;
     int max_addr;
     int org;
+    int rom_type;
 
     std::vector<std::string> label_ids;
     std::map<std::string, int> labels;
@@ -138,7 +139,7 @@
 %token <string>   T_ACC T_STACK T_INDEX 
 
 //  Assembler commands
-%token <string>   T_ORIGIN T_DEFINE
+%token <string>   T_ORIGIN T_DEFINE T_LOROM T_HIROM
 
 //  Math
 %token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL T_LOGCOMPL
@@ -240,6 +241,12 @@ command:
           assembler.snespos = value;
           assembler.org = value;
         }
+      | T_LOROM {
+
+      }
+      | T_HIROM {
+
+      }
       ;
 
 expr:   implied
