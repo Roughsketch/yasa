@@ -34,7 +34,6 @@
 (?i:HIROM)                      return TOKEN(T_HIROM);
 (?i:HEADER)                     ;
 (?i:incsrc)[ \t]*+              BEGIN(incsrc);
-![a-zA-Z_][a-zA-Z0-9_]*         SAVE_TOKEN; return TOKEN(T_DEFINE);
 
 
 <incsrc>.*+                     {
@@ -195,10 +194,10 @@ $[0-9a-fA-F]+                   SAVE_TOKEN; return TOKEN(T_HEX);
 &                               return TOKEN(T_LOGAND);
 \|                              return TOKEN(T_LOGOR);
 \^                              return TOKEN(T_LOGXOR);
-!                               return TOKEN(T_LOGNOT);
 ~                               return TOKEN(T_LOGCOMPL);
 =                               return TOKEN(T_EQUAL);
 #                               return TOKEN(T_HASH);
+!                               return TOKEN(T_EXCLA);
 .                               printf("Unknown token! %s %d\n", yytext, yylineno); yyterminate();
 %%
 

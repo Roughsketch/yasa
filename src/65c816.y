@@ -116,7 +116,8 @@
 %token <string>   T_IDENT T_LABEL T_SUBLABEL
 
 //  Symbols
-%token <string>   T_COMMA T_SEPARATOR T_LINE T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET T_HASH
+%token <string>   T_COMMA T_SEPARATOR T_LINE T_HASH T_EXCLA
+%token <string>   T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET
 
 //  Numbers
 %token <string>   T_HEX T_BIN T_ORD
@@ -143,7 +144,7 @@
 
 //  Math
 %token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_EQUAL
-%token <string>   T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_LOGCOMPL
+%token <string>   T_LOGAND T_LOGOR T_LOGXOR T_LOGCOMPL
 
 //  Math precedence
 %left T_LOGOR
@@ -231,7 +232,7 @@ line:   expr {
         }
       ;
 
-define: T_DEFINE { $$ = new std::string(yytext); }
+define: T_EXCLA T_IDENT { $$ = new std::string(yytext); }
       ;
 
 command:
