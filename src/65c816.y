@@ -142,7 +142,8 @@
 %token <string>   T_ORIGIN T_DEFINE T_LOROM T_HIROM
 
 //  Math
-%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_EQUAL T_LOGCOMPL
+%token <string>   T_RSHIFT T_LSHIFT T_PLUS T_MINUS T_MULT T_DIV T_MOD T_EQUAL
+%token <string>   T_LOGAND T_LOGOR T_LOGXOR T_LOGNOT T_LOGCOMPL
 
 //  Math precedence
 %left T_LOGOR
@@ -164,7 +165,8 @@
 }
 
 %type <instrvec>    input line
-%type <instruction> expr implied immediate direct indexed indirect indirect_indexed stack_relative stack_relative_indirect accumulator indirect_long block 
+%type <instruction> expr implied immediate direct indexed indirect indirect_indexed
+%type <instruction> stack_relative stack_relative_indirect accumulator indirect_long block 
 %type <string>      instr index stack accum define label math param number
 
 %start program
