@@ -116,7 +116,7 @@
 %token <string>   T_IDENT T_LABEL T_SUBLABEL
 
 //  Symbols
-%token <string>   T_COMMA T_SEPARATOR T_LINE T_HASH T_EXCLA
+%token <string>   T_COMMA T_SEPARATOR T_LINE T_HASH T_BANG
 %token <string>   T_LPAREN T_RPAREN T_LBRACKET T_RBRACKET
 
 //  Numbers
@@ -232,7 +232,7 @@ line:   expr {
         }
       ;
 
-define: T_EXCLA T_IDENT { $$ = new std::string(yytext); }
+define: T_BANG T_IDENT { $$ = new std::string(yytext); }
       ;
 
 command:
