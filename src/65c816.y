@@ -41,6 +41,14 @@
     return std::find(jumps.begin(), jumps.end(), instr) != jumps.end();
   }
 
+  enum RomLayout
+  {
+    LOROM,
+    HIROM,
+    EXLOROM,
+    EXHIROM
+  };
+
   struct Assembler
   {
     int snespos;
@@ -54,6 +62,11 @@
     std::map<std::string, std::string> defines;
 
     std::map<int, std::vector<yasa::Instruction>> ast;
+
+    void setmode(RomLayout layout)
+    {
+      rom_type = layout;
+    }
 
     std::string *add_sublabel_name(const char *text)
     {
@@ -245,10 +258,10 @@ command:
           assembler.org = value;
         }
       | T_LOROM {
-
+        assembler.setmode(RomLayout::LOROM);
       }
       | T_HIROM {
-
+        assembler.setmode(RomLayout::HIROM);
       }
       ;
 
