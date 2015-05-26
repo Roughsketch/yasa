@@ -8,6 +8,7 @@ extern int yylex();
 
 extern char *yytext;
 extern FILE *yyin;
+extern int yylineno;
 
 extern void scan_string(const std::string& str);
 extern void set_base_path(const std::string& path);

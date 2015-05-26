@@ -18,6 +18,7 @@
 
   #include "util.hpp"
   #include "assembler.hpp"
+  #include "state.hpp"
 
   #include "math_externs.hpp"
 
@@ -40,87 +41,6 @@
 
     return std::find(jumps.begin(), jumps.end(), instr) != jumps.end();
   }
-
-  enum RomLayout
-  {
-    LOROM,
-    HIROM,
-    EXLOROM,
-    EXHIROM
-  };
-
-  struct Assembler
-  {
-    int snespos;
-    int realpos;
-    int max_addr;
-    int org;
-    int rom_type;
-
-    std::vector<std::string> label_ids;
-    std::map<std::string, int> labels;
-    std::map<std::string, std::string> defines;
-
-    std::map<int, std::vector<yasa::Instruction>> ast;
-
-    void setmode(RomLayout layout)
-    {
-      rom_type = layout;
-    }
-
-    std::string *add_sublabel_name(const char *text)
-    {
-      std::string sublabel = "";
-      std::string id = std::string(text);
-      int i = 0;
-
-      while (id[i] == '.')
-      {
-        if (i > label_ids.size())
-        {
-          std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-          return nullptr;
-        }
-
-        sublabel += label_ids[i] + "_";
-        i++;
-      }
-
-      id = id.substr(i);
-
-      //  Sublabel was dedented
-      if (i != label_ids.size())
-      {
-        //  Erase all sublabels deeper than this one
-        label_ids.erase(label_ids.begin() + i, label_ids.end());
-      }
-      
-      //  Push back the new sublabel
-      label_ids.push_back(id);
-      return new std::string(sublabel + id);
-    }
-
-    std::string get_sublabel_name(const char *text)
-    {
-      std::string sublabel = "";
-      std::string id = std::string(text);
-      int i = 0;
-
-      while (id[i] == '.')
-      {
-        if (i > label_ids.size())
-        {
-          std::cout << "Error: sublabel goes deeper than expected. (line " << yylineno << ")" << std::endl;
-          return nullptr;
-        }
-
-        sublabel += label_ids[i] + "_";
-        i++;
-      }
-
-      return sublabel + id;
-    }
-  };
 
   Assembler assembler;
 %}

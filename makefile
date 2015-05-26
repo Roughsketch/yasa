@@ -4,7 +4,7 @@ LDFLAGS+=
 FLEX=win_flex.exe
 BISON=win_bison.exe
 FLEXBISONSRCS=src/parser.cpp src/tokens.cpp src/math_parser.cpp src/math_tokens.cpp
-SRCS=$(FLEXBISONSRCS) src/main.cpp src/assembler.cpp src/instruction.cpp src/util.cpp
+SRCS=$(FLEXBISONSRCS) src/main.cpp src/assembler.cpp src/instruction.cpp src/util.cpp src/state.cpp
 OBJS=$(SRCS:.cpp=.o)
 EXE=bin/yasa
 DEBUG_EXE=bin/yasad
