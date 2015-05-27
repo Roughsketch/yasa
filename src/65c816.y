@@ -42,7 +42,7 @@
     return std::find(jumps.begin(), jumps.end(), instr) != jumps.end();
   }
 
-  Assembler assembler;
+  State assembler;
 %}
 
 //  Names / Labels

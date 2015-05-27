@@ -1,11 +1,11 @@
 #include "state.hpp"
 
-void Assembler::setmode(RomLayout layout)
+void State::setmode(RomLayout layout)
 {
   rom_type = layout;
 }
 
-std::string *Assembler::add_sublabel_name(const char *text)
+std::string *State::add_sublabel_name(const char *text)
 {
   std::string sublabel = "";
   std::string id = std::string(text);
@@ -37,7 +37,7 @@ std::string *Assembler::add_sublabel_name(const char *text)
   return new std::string(sublabel + id);
 }
 
-std::string Assembler::get_sublabel_name(const char *text)
+std::string State::get_sublabel_name(const char *text)
 {
   std::string sublabel = "";
   std::string id = std::string(text);

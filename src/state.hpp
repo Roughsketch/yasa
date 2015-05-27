@@ -17,7 +17,7 @@ enum RomLayout
   EXHIROM
 };
 
-struct Assembler
+struct State
 {
   int snespos;
   int realpos;
