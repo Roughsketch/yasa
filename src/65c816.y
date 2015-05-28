@@ -223,14 +223,6 @@ direct:
       instr param { 
         //puts("Direct");
         //std::cout << "Line: " << yylineno << std::endl;
-        // int value = $2->value();
-        // int size = $2->size();
-
-        // if ($2->size() > 3)
-        // {
-        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-        //   YYERROR;
-        // }
 
         if (is_relative_jump(*$1))
         {
@@ -246,11 +238,6 @@ indirect:
       instr T_LPAREN param T_RPAREN { 
         //puts("Indirect");
         //std::cout << "Line: " << yylineno << std::endl;
-        // if ($3->value() > 0xFFFF)
-        // {
-        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>($3->value()) << ") line " << yylineno << std::endl;
-        //   YYERROR;
-        // }
 
         $$ = new yasa::Instruction(*$1, yasa::Indirect, assembler.snespos, *$3);
       };
@@ -259,14 +246,6 @@ indexed:
       instr param T_COMMA index {
         //puts("Indexed");
         //std::cout << "Line: " << yylineno << std::endl;
-        // int value = $2->value();
-        // int size = $2->size();
-
-        // if (value > 0xFFFFFF) 
-        // {
-        //   std::cout << "Error: Numeric parameter too large (" << static_cast<int>(value) << ") line " << yylineno << std::endl;
-        //   YYERROR;
-        // }
 
         if (*$4 == "X")
         {
