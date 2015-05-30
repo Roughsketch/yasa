@@ -103,11 +103,7 @@
 %type <instruction> stack_relative stack_relative_indirect accumulator indirect_long block 
 %type <string>      instr index stack accum define label math param number
 
-%start program
-
 %%
-program: input { } //instructions = new std::vector<yasa::Instruction>(*$1); }
-      ;
 
 input:  /* empty */ { $$ = new std::vector<yasa::Instruction>(); }
       | input line  {
