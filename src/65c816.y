@@ -449,26 +449,26 @@ std::vector<uint8_t> get_result()
     std::cout << "Total instructions for org $" << std::hex << org.first << std::dec << ": " << org.second.size() << std::endl;
     for (auto instr : org.second)
     {
-      std::cout << "Key: " << instr.key() << std::endl
-                << "Type: " << instr.type() << std::endl
-                << "Size: " << instr.size() << std::endl
-                << "Address: " << std::endl
-                << "\tReal: " << instr.pc_addr() << std::endl
-                << "\tSNES: " << instr.snes_addr() << std::endl
-                << "Static: " << std::boolalpha << instr.is_static() << std::endl
-                << "Params: " << std::endl;
+      // std::cout << "Key: " << instr.key() << std::endl
+      //           << "Type: " << instr.type() << std::endl
+      //           << "Size: " << instr.size() << std::endl
+      //           << "Address: " << std::endl
+      //           << "\tReal: " << instr.pc_addr() << std::endl
+      //           << "\tSNES: " << instr.snes_addr() << std::endl
+      //           << "Static: " << std::boolalpha << instr.is_static() << std::endl
+      //           << "Params: " << std::endl;
 
-      if (instr.get_param(1) != "")
-      {
-        std::cout << "\t1: " << instr.get_param(1) << std::endl;
-      }
+      // if (instr.get_param(1) != "")
+      // {
+      //   std::cout << "\t1: " << instr.get_param(1) << std::endl;
+      // }
 
-      if (instr.get_param(2) != "")
-      {
-        std::cout << "\t2: " << instr.get_param(2) << std::endl;
-      }
+      // if (instr.get_param(2) != "")
+      // {
+      //   std::cout << "\t2: " << instr.get_param(2) << std::endl;
+      // }
 
-      std::cout << std::endl;
+      // std::cout << std::endl;
 
       if (instr.is_static())
       {
