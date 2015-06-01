@@ -70,7 +70,7 @@
 %token <string>   T_WDM T_XBA T_XCE
 
 //  Registers
-%token <string>   T_ACC T_STACK T_INDEX_X T_INDEX_Y
+%token <string>   T_ACC T_STACK T_INDEX 
 
 //  Assembler commands
 %token <string>   T_ORIGIN T_DEFINE T_LOROM T_HIROM
@@ -101,7 +101,7 @@
 %type <instrvec>    input line
 %type <instruction> expr implied immediate direct indexed indirect indirect_indexed
 %type <instruction> stack_relative stack_relative_indirect accumulator indirect_long block 
-%type <string>      instr stack accum define label math param number
+%type <string>      instr index stack accum define label math param number
 
 %%
 
@@ -239,26 +239,28 @@ indirect:
       };
 
 indexed:
-        instr param T_COMMA T_INDEX_X {
-          //puts("Indexed X");
-          //std::cout << "Line: " << yylineno << std::endl;
-          $$ = new yasa::Instruction(*$1, yasa::Indexed_X, assembler.snespos, *$2);
+      instr param T_COMMA index {
+        //puts("Indexed");
+        //std::cout << "Line: " << yylineno << std::endl;
+
+        if (*$4 == "X")
+        {
+          
+          $$ = new yasa::Instruction(*$1, yasa::Indexed_X, assembler.snespos, *$2); 
         }
-      |
-        instr param T_COMMA T_INDEX_Y {
-          //puts("Indexed Y");
-          //std::cout << "Line: " << yylineno << std::endl;
+        else if (*$4 == "Y")
+        {
           $$ = new yasa::Instruction(*$1, yasa::Indexed_Y, assembler.snespos, *$2);
         }
-      ;
+      };
 
 indirect_indexed:
-        instr T_LPAREN param T_COMMA T_INDEX_X T_RPAREN {
+        instr T_LPAREN param T_COMMA index T_RPAREN {
           //puts("Indirect Indexed X");
           //std::cout << "Line: " << yylineno << std::endl;
           $$ = new yasa::Instruction(*$1, yasa::Indirect_X, assembler.snespos, *$3);
         }
-      | instr T_LPAREN param T_RPAREN T_COMMA T_INDEX_Y {
+      | instr T_LPAREN param T_RPAREN T_COMMA index {
           //puts("Indirect Indexed Y");
           //std::cout << "Line: " << yylineno << std::endl;
           if (*$6 == "Y")
@@ -282,11 +284,19 @@ stack_relative:
       ;
 
 stack_relative_indirect:
-      instr T_LPAREN param T_COMMA stack T_RPAREN T_COMMA T_INDEX_Y {
+      instr T_LPAREN param T_COMMA stack T_RPAREN T_COMMA index {
         //puts("Stack Relative Indirect");
         //std::cout << "Line: " << yylineno << std::endl;
 
-        $$ = new yasa::Instruction(*$1, yasa::Stack_Y, assembler.snespos, *$3);
+        if (*$8 == "Y")
+        {
+          $$ = new yasa::Instruction(*$1, yasa::Stack_Y, assembler.snespos, *$3);
+        }
+        else
+        {
+          std::cout << "Error: non-Y register used with stack relative indirect indexed mode. (line " << yylineno << ")" << std::endl;
+          YYERROR;
+        }
       }
       ;
 
@@ -306,11 +316,19 @@ indirect_long:
 
           $$ = new yasa::Instruction(*$1, yasa::Indirect_Long, assembler.snespos, *$3);
         }
-      | instr T_LBRACKET param T_RBRACKET T_COMMA T_INDEX_Y {
+      | instr T_LBRACKET param T_RBRACKET T_COMMA index {
           //puts("Indirect Long");
           //std::cout << "Line: " << yylineno << std::endl;
 
-          $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, assembler.snespos, *$3);
+          if (*$6 == "Y")
+          {
+            $$ = new yasa::Instruction(*$1, yasa::Indirect_Long_Y, assembler.snespos, *$3);
+          }
+          else
+          {
+            std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
+            YYERROR;
+          }
         }
       ;
 
@@ -354,6 +372,23 @@ math:   T_PLUS        { $$ = new std::string("+");  }
 number: T_HEX         { $$ = new std::string(yytext); }
       | T_ORD         { $$ = new std::string(yytext); }
       | T_BIN         { $$ = new std::string(yytext); }
+      ;
+
+index:  T_INDEX {
+          if (yytext[0] == 'X' || yytext[0] == 'x')
+          {
+            $$ = new std::string("X");
+          }
+          else if (yytext[0] == 'Y' || yytext[0] == 'y')
+          {
+            $$ = new std::string("Y");
+          }
+          else
+          {
+            std::cout << "Error: Invalid index register " << yytext << " (line " << yylineno << ")" << std::endl;
+            YYERROR;
+          }
+        }
       ;
 
 accum:  T_ACC         { $$ = new std::string("A"); }
