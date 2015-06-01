@@ -169,7 +169,8 @@
 (?i:XBA(\.(b|w|l))?)            return TOKEN(T_XBA);
 (?i:XCE(\.(b|w|l))?)            return TOKEN(T_XCE);
 (?i:ORG)                        return TOKEN(T_ORIGIN);
-[xyXY]                          SAVE_TOKEN; return TOKEN(T_INDEX);
+(?i:x)                          SAVE_TOKEN; return TOKEN(T_INDEX_X);
+(?i:y)                          SAVE_TOKEN; return TOKEN(T_INDEX_Y);
 (?i:a)                          SAVE_TOKEN; return TOKEN(T_ACC);
 (?i:s)                          SAVE_TOKEN; return TOKEN(T_STACK);
 [a-zA-Z_][a-zA-Z0-9_]*:         SAVE_TOKEN; return TOKEN(T_LABEL);
