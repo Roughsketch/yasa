@@ -261,15 +261,7 @@ indirect_indexed:
       | instr T_LPAREN param T_RPAREN T_COMMA T_INDEX_Y {
           //puts("Indirect Indexed Y");
           //std::cout << "Line: " << yylineno << std::endl;
-          if (*$6 == "Y")
-          {
-            $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, assembler.snespos, *$3);
-          }
-          else
-          {
-            std::cout << "Error: non-Y register used with indirect indexed mode. (line " << yylineno << ")" << std::endl;
-            YYERROR;
-          }
+          $$ = new yasa::Instruction(*$1, yasa::Indirect_Y, assembler.snespos, *$3);
         }
       ;
 

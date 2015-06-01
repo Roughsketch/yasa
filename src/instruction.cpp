@@ -56,9 +56,11 @@ namespace yasa
     else
     {
       m_size = get_avg_size(key, mode);
-      m_setsize = has_set_size(key, mode);
+      //m_setsize = has_set_size(key, mode);
     }
 
+
+    std::cout << key << " + " << param1 << " + " << param2 << " : " << m_params.size() << " | " << m_size << std::endl;
     std::map<std::string, int> temp;
 
     if (m_params.size() == 0)
@@ -107,8 +109,6 @@ namespace yasa
         }
       }
     }
-
-    std::cout << key << " + " << param1 << " + " << param2 << " " << m_size << std::endl;
 
     if (m_static)
     {
